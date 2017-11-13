@@ -19,7 +19,10 @@
 
   source("LoadPackages.R")
   
-  packages <- c("data.table")
+  packages <- c("data.table",
+                "dplyr",
+                "dummies",
+                "neuralnet")
   loadPackages(packages)
   rm(packages)
   
@@ -61,8 +64,17 @@
   # Find features which have values that are not in the train set but are in the test set
   valuesOnlyInTest <- checkForValuesInBoth(unique.test,unique.train)
   print(valuesOnlyInTest)
-    # This results in id (obviously), ps_reg_03, ps_car_12, ps_car_13, ps_car_14, ps_calc_08, 
-    # ps_calc_11, ps_calc_13, and ps_calc_14 having values in test set that aren't in the training set
+    # This results in id (obviously), 
+    # Decimals: ps_reg_03, ps_car_12, ps_car_13, ps_car_14, 
+    # Integers: ps_calc_08, ps_calc_11, ps_calc_13, and ps_calc_14 having values in test set that aren't in the training set
+  
+  #-
+  # A decision needs to be made about what to do with integer values with only a few options. Are
+  # these categorical or interval? Are they always perfect predictors that a claim will be filed?
+  # How do we ensure our model can handle these values if we are only training our model with the training set?
+  # One method is to just ignore these values, our dummy encoding won't use these values for the prediction.
+  # Another is to treat the variables as integers (if they are actually interval data such as temperature).
+  #-
   
   # Cleanup exploratory data
   rm(unique.train)
