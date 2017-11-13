@@ -5,6 +5,7 @@
 # Author: Adam Sampson
 # 
 # Goal: Predict the probability that a driver will initiate an auto claim in the next year.
+# Clarification: Maximize false negatives, and maximize false positives
 ##########
 
 #---
@@ -16,12 +17,12 @@
 # positive rate. 
 #---
 
-  source("Functions.R")
+  source("LoadPackages.R")
   
   packages <- c("data.table")
   loadPackages(packages)
+  rm(packages)
   
-  # re-run source(Function.R) now that required packages are loaded.
   source("Functions.R")
 
 #---
@@ -56,7 +57,16 @@
     # ps_car_13 has >70k possilbe decimal values -> highly unlikely categorical
 
   unique.test <- lapply(ps.test.dt,unique)
-    # Find features which have values that are not in the train set but are in the test set
-    valuesOnlyInTest <- checkForValuesInBoth(unique.test,unique.train)
+  
+  # Find features which have values that are not in the train set but are in the test set
+  valuesOnlyInTest <- checkForValuesInBoth(unique.test,unique.train)
+  print(valuesOnlyInTest)
     # This results in id (obviously), ps_reg_03, ps_car_12, ps_car_13, ps_car_14, ps_calc_08, 
     # ps_calc_11, ps_calc_13, and ps_calc_14 having values in test set that aren't in the training set
+  
+  # Cleanup exploratory data
+  rm(unique.train)
+  rm(unique.test)
+  rm(valuesOnlyInTest)
+  gc(verbose = TRUE)
+  
