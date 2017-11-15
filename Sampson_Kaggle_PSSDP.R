@@ -48,10 +48,11 @@
 #---
   str(ps.train.dt)
   summary(ps.train.dt)
-  
+  mean(ps.train.dt$target)
   # A lot of this data is categorical, even if the answers are integers. Need to identify which
   # variables need to be treated as categorical.
   # QUESTION: Can we use factors to handle categorical values?
+  # 0.03644752 positive target
   
   # Indentify how many values are possible per column
   unique.train <- lapply(ps.train.dt,unique)
