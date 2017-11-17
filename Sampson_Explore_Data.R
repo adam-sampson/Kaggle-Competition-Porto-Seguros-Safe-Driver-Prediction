@@ -1,4 +1,86 @@
 ##########
+# Kaggle Competition
+# Porto Seguro's Safe Driver Prediction
+# https://www.kaggle.com/c/porto-seguro-safe-driver-prediction/discussion/43282
+# Author: Adam Sampson
+##########
 # This file is intended to do raw exploration of the data.
 # It has been separated to clear up the actual Model code.
 ##########
+
+  source("LoadPackages.R")
+  
+  packages <- c("data.table",
+                "dplyr",
+                "dummies",
+                "neuralnet",
+                "stringr")
+  loadPackages(packages)
+  rm(packages)
+  
+  source("Functions.R")
+
+#---
+# Import Data from files as data.table
+#---
+  ps.train.dt <- fread("train.csv")
+  ps.test.dt <- fread("test.csv")
+
+#---
+# Review data and clean up classes of variables
+#---
+  View(head(ps.train.dt, n = 20L))
+  train.unique <- lapply(ps.train.dt[,-c(1,2)],unique)
+  test.unique <- lapply(ps.test.dt[,-1],unique)
+  
+  # Data is divided into id, target, _ind, _reg, _car, _calc
+  # Data is class of continuous(not marked), ordinal(not marked), _bin, _cat
+  
+  target.var <- c("target")
+  categorical.var <- names(ps.train.dt) %>% str_subset(".+_cat")
+  binary.var <- names(ps.train.dt) %>% str_subset(".+_bin")
+  other.var <- ps.train.dt %>% select(-id,-target, -one_of(categorical.var), -one_of(binary.var)) %>% names()
+  
+  # Review the remaing to estimate whether they appear to be ordinal or interval
+  View(head(ps.train.dt %>% select(one_of(other.var)),20))
+  unique.train.other <- lapply(ps.train.dt %>% select(one_of(other.var)),unique)
+    unique.train.other
+      # ps_ind_01 are integers between 1 and 7
+      # ps_ind_03 are integers between 1 and 11
+      # ps_ind_14 are integers between 1 and 4
+      # ps_ind_15 are integers between 1 and 13
+      # ps_reg_01 are decimals between 0.0 and 0.9 (but only one digit)
+      # ps_reg_03 are decimals with many values (need summary)
+      # ps_car_11 are integers between 0 to 3 with some -1 values to indicate unknown
+      # ps_car_12 are decimals with many values (need summary)
+      # ps_car_13 are decimals with many values (need summary)
+      # ps_car_14 are decimals with many values (need summary)
+      # ps_car_15 are decimals with only a few values between 0 and 3.741657. Could this be a few categories 
+          # that are transformed?
+      # ps_calc_01 are decimals between 0.0 and 0.9 (but only one digit)
+      # ps_calc_02 are decimals between 0.0 and 0.9 (but only one digit)
+      # ps_calc_03 are decimals between 0.0 and 0.9 (but only one digit)
+      # ps_calc_04 are integers between 0 and 5
+      # ps_calc_05 are integers between 0 and 6
+      # ps_calc_06 are integers between 0 and 10
+      # ps_calc_07 are integers between 0 and 9
+      # ps_calc_08 are integers between 2 and 12
+      # ps_calc_09 are integers between 0 and 7
+      # ps_calc_10 are integers between 0 and 25
+      # ps_calc_11 are integers between 0 and 19
+      # ps_calc_12 are integers between 0 and 10
+      # ps_calc_13 are integers between 0 and 13
+      # ps_calc_14 are integers between 0 and 23
+    
+    lapply(unique.train.other,summary)
+    lapply(unique.train.other,length)
+  summary(ps.train.dt %>% select(-id, -(target), -one_of(categorical.var), -one_of(binary.var)))  
+  
+  
+  # See whether any of these variables are missing values in the ps.test.dt
+  valuesOnlyInTest <- checkForValuesInBoth(
+                       lapply(ps.train.dt %>% select(one_of(other.var)),unique),
+                       lapply(ps.test.dt %>% select(one_of(other.var)),unique))
+  
+  # Make an educated guess which variables appear to be ordinal
+  # ordinal.var <- c("ps_ind_01", "ps_ind_03", "ps_ind_14", "ps_ind_15","ps_reg_01","ps_reg_02")

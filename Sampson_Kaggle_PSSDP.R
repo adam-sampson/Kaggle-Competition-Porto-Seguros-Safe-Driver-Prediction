@@ -40,8 +40,8 @@
 # This data is heavily imbalanced. Let's split the training data into positives and negatives 
 # to help review. data.table makes this more memory efficient.
 #---
-  pos.ps.train.dt <- ps.train.dt[target == 1,]  
-  neg.ps.train.dt <- ps.train.dt[target == 0,]
+  # pos.ps.train.dt <- ps.train.dt[target == 1,]  
+  # neg.ps.train.dt <- ps.train.dt[target == 0,]
   
 #---
 # Review data and clean up classes of variables
