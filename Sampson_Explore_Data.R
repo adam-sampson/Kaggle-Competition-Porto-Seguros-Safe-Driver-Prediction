@@ -14,7 +14,11 @@
                 "dplyr",
                 "dummies",
                 "neuralnet",
-                "stringr")
+                "stringr",
+                "ggplot",
+                "caret",
+                "scales",
+                "ggthemes")
   loadPackages(packages)
   rm(packages)
   
@@ -86,16 +90,67 @@
     
     # Make an educated guess which variables appear to be ordinal
     ordinal.var <- ps.train.dt %>% select(other.var) %>% select(1,2,3,4,5,6,8,13:26) %>% names()
-    nominal.var <- ps.train.dt %>% select(-id,-one_of(target.var),-one_of(categorical.var),
+    interval.var <- ps.train.dt %>% select(-id,-one_of(target.var),-one_of(categorical.var),
                                           -one_of(binary.var),-one_of(ordinal.var)) %>% names()
+    rm(other.var)
     
   #---
   # Convert variables to different data types.
   #---
     str(ps.train.dt)
-    ps.train.dt[,lapply(.SD,as.numeric)]
-    ps.train.dt[,lapply(.SD,as.numeric),by=id]
+    changeCols <- c(binary.var,categorical.var,interval.var,ordinal.var,target.var)
+    ps.train.dt[,(changeCols) := lapply(.SD,as.numeric), .SDcols = changeCols]
+    str(ps.train.dt)
+    
+    changeCols <- target.var
+    
+    # ps.train.dt[,(changeCols) := lapply(.SD,as.factor), .SDcols = changeCols]
     
 #---
-# Visualize data for patters and feature selection
+# Visualize data for patterns and feature selection
 #---
+  # Bar charts for binary data
+  
+  # calculate new df with the percent of each bin
+  calcPercentOfTotal <- function(in.dt,colName) {
+    percent.df <- data.frame()
+    totTargZero <- length(in.dt[target==0,target])
+    totTargOne  <- length(in.dt[target==1,target])
+    for(vals in unique(select(in.dt,colName)[[1]])) {
+      temp.dt <- in.dt[get(colName) == vals]
+      #valCount <- length(temp.dt[,get(colName)])
+      percentPos <- length(temp.dt[target == 1,get(colName)]) / totTargOne
+      percentNeg <- length(temp.dt[target == 0,get(colName)]) / totTargZero
+      percent.df <- percent.df %>% rbind(data.frame(target = c(1,0),
+                                                    value = c(vals,vals), 
+                                                    percent = c(percentPos,percentNeg)))
+    }
+    return(percent.df)
+  }
+  
+  calcPercentOfTotal(ps.train.dt,"ps_ind_06_bin")
+  
+  for (i in binary.var) {
+    plot <- ggplot(calcPercentOfTotal(ps.train.dt,i)) +
+      geom_bar(aes(x=value,
+                   y=percent,
+                   fill=factor(target)),
+               position="dodge",
+               stat="identity") +
+      ggtitle(i)
+    print(plot)
+    readline(prompt = "Press enter to view next plot.")
+  }
+  
+  for (i in categorical.var) {
+    plot <- ggplot(calcPercentOfTotal(ps.train.dt,i)) +
+      geom_bar(aes(x=value,
+                   y=percent,
+                   fill=factor(target)),
+               position="dodge",
+               stat="identity") +
+      ggtitle(i)
+    print(plot)
+    readline(prompt = "Press enter to view next plot.")
+  }
+  
