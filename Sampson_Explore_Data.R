@@ -238,24 +238,9 @@
     typeIndex.dt <- rbind(typeIndex.dt,data.table(type = c("target"), colHeader = target.var))
     typeIndex.dt <- rbind(typeIndex.dt,data.table(type = c("id"), colHeader = c("id")))
   
-  cleanupMissing <- function(in.dt,classIndex.dt,cutoffPct,missingVal) {
-    colWithMissing <- returnMissing(in.dt,missingVal)
-    for(col in names(colWithMissing)) {
-      # if the percentage is greater than cutoffPct create a dummy binary variable
-      if(as.numeric(colWithMissing[[col]][1]) > cutoffPct) {
-        print("Over cutoff percent")
-      }
-      # for all variables with missing, decide whether to use mean, median, or mode to cleanup variable
-      if(classIndex.dt[colHeader == col][[1]] == "interval"){
-        print("Interval Variable Detected")
-      } else if(classIndex.dt[colHeader == col][[1]] == "ordinal"){
-        print("Ordinal Variable Detected")
-      } else if(classIndex.dt[colHeader == col][[1]] == "categorical"){
-        print("Categorical Variable Detected")
-      } else if(classIndex.dt[colHeader == col][[1]] == "binary"){
-        print("Binary Variable Detected")
-      }
-      
-    }
-  }
+  cleanupMissing(ps.train.dt,typeIndex.dt,0.05,-1)
+  returnMissing(ps.train.dt,-1)
+  head(ps.train.dt[get("ps_reg_03")==-1])
+  head(ps.train.dt)
+  head(ps.train.dt[get("ps_car_14")==-1])
   
