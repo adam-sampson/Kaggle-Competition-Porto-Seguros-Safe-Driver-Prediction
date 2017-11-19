@@ -20,3 +20,15 @@ checkForValuesInBoth <- function(sourceList, checkList) {
   return(outList)
 }
 
+returnMissing <- function(source.dt,missingChar) {
+  outList <- list()
+  totallength <- length(source.dt[[1]])
+  for(feature in names(source.dt)) {
+    tempCatch <- NULL
+    tempCatch <- length(source.dt[get(feature)==missingChar,get(feature)])
+    if(tempCatch != 0) {
+      outList[[feature]] <- c(round(tempCatch/totallength,digits = 5),paste0(tempCatch," (",round(100*tempCatch/totallength,digits = 3),"%) of values are ",as.character(missingChar)))
+    }
+  }
+  return(outList)
+}

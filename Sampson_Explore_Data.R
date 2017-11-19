@@ -15,10 +15,12 @@
                 "dummies",
                 "neuralnet",
                 "stringr",
-                "ggplot",
+                "ggplot2",
                 "caret",
                 "scales",
-                "ggthemes")
+                "ggthemes",
+                "ggExtra",
+                "ggcorrplot")
   loadPackages(packages)
   rm(packages)
   
@@ -109,8 +111,14 @@
 #---
 # Visualize data for patterns and feature selection
 #---
+  corr <- round(cor(ps.train.dt))
+  ggcorrplot(corr, hc.order=TRUE,
+             type="upper",
+             lab=TRUE,
+             lab_size=3,
+             method="circle")
+    
   # Bar charts for binary data
-  
   # calculate new df with the percent of each bin
   calcPercentOfTotal <- function(in.dt,colName) {
     percent.df <- data.frame()
@@ -152,5 +160,102 @@
       ggtitle(i)
     print(plot)
     readline(prompt = "Press enter to view next plot.")
+  }
+  
+  for (i in ordinal.var) {
+    plot <- ggplot(calcPercentOfTotal(ps.train.dt,i)) +
+      geom_bar(aes(x=value,
+                   y=percent,
+                   fill=factor(target)),
+               position="dodge",
+               stat="identity") +
+      ggtitle(i)
+    print(plot)
+    readline(prompt = "Press enter to view next plot.")
+  }
+  
+  ## For density plots
+  
+  for (i in ordinal.var) {
+    plot <- ggplot(ps.train.dt) +
+      geom_density(aes_string(x=i,fill="factor(target)"),alpha=0.6) +
+      ggtitle(i)
+    print(plot)
+    readline(prompt = "Press enter to view next plot.")
+  }
+  
+  for (i in interval.var) {
+    plot <- ggplot(ps.train.dt) +
+      geom_density(aes_string(x=i,fill="factor(target)"),alpha=0.6) +
+      ggtitle(i)
+    print(plot)
+    readline(prompt = "Press enter to view next plot.")
+  }
+  
+  for (i in ordinal.var) {
+    plot <- ggplot(ps.train.dt) +
+      geom_count(aes_string(x=i,y="factor(target)")) +
+      ggtitle(i)
+    # ggMarginal(plot, type="histogram",fill="transparent")
+    print(plot)
+    readline(prompt = "Press enter to view next plot.")
+  }
+  
+  for (i in interval.var) {
+    plot <- ggplot(ps.train.dt) +
+      geom_count(aes_string(x=i,y="factor(target)")) +
+      ggtitle(i)
+    # ggMarginal(plot, type="histogram",fill="transparent")
+    print(plot)
+    readline(prompt = "Press enter to view next plot.")
+  }
+  
+  plot <- ggplot(ps.train.dt) +
+    geom_count(aes_string(x="ps_reg_03",y="factor(target)"))
+  ggMarginal(plot, type="histogram",fill="transparent")
+  print(plot)  
+
+#---
+# Consider what to do about -1 values.
+#---
+  # count the number of values that are -1 in each variable
+  returnMissing(ps.train.dt,-1)
+  
+  ## One option is to run a tree, each branch being whether -1 is a value in a specific column
+  
+  ## One option is to convert the -1 to something else
+  
+  ## One option (for some categorical, binary, or ordinal) is to treat -1 as a category. 
+  ## Only ps_reg_03 (18%) would have a problem with this method
+  
+  ## One option is to make a categorical variable for each column that has a missing value
+  ## and then deal with the -1 in the main column with median, mode, or mean.
+  typeIndex.dt <- data.table()
+    typeIndex.dt <- rbind(typeIndex.dt,data.table(type = c("binary"), colHeader = binary.var))
+    typeIndex.dt <- rbind(typeIndex.dt,data.table(type = c("categorical"), colHeader = categorical.var))
+    typeIndex.dt <- rbind(typeIndex.dt,data.table(type = c("ordinal"), colHeader = ordinal.var))
+    typeIndex.dt <- rbind(typeIndex.dt,data.table(type = c("interval"), colHeader = interval.var))
+    typeIndex.dt <- rbind(typeIndex.dt,data.table(type = c("target"), colHeader = target.var))
+    typeIndex.dt <- rbind(typeIndex.dt,data.table(type = c("id"), colHeader = c("id")))
+  
+  cleanupMissing <- function(in.dt,classIndex.dt,cutoffPct,missingVal) {
+    colWithMissing <- returnMissing(in.dt,missingVal)
+    for(col in names(colWithMissing)) {
+      # if the percentage is greater than cutoffPct create a dummy binary variable
+      if(as.numeric(colWithMissing[[col]][1]) > cutoffPct) {
+        print("Over cutoff percent")
+      }
+      # for all variables with missing, decide whether to use mean, median, or mode to cleanup variable
+      if(classIndex.dt[colHeader == col][[1]] == "interval"){
+        print("Interval Variable Detected")
+      } else if(classIndex.dt[colHeader == col][[1]] == "ordinal"){
+        print("Ordinal Variable Detected")
+      } else if(classIndex.dt[colHeader == col][[1]] == "categorical"){
+        print("Categorical Variable Detected")
+      } else if(classIndex.dt[colHeader == col][[1]] == "binary"){
+        print("Binary Variable Detected")
+      }
+      
+    }
   }
   
