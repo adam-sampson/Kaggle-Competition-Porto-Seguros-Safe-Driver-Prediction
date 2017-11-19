@@ -18,13 +18,15 @@ packages <- c("data.table",
               #"ggplot2",
               "caret",
               "e1071",
-              #"ROCR"
+              "ROCR",
               "pROC"
               )
 loadPackages(packages)
 rm(packages)
 
 source("Functions.R")
+
+set.seed(42)
 
 #---
 # Import Data from files as data.table
@@ -65,10 +67,16 @@ source("Functions.R")
   
   # Change target to factor
   changeCols <- target.var
-  ps.train.dt[get(changeCols)==0,(changeCols) := "noClaim"]
-  ps.train.dt[get(changeCols)==1,(changeCols) := "claim"]
+  ps.train.dt[get(changeCols)==0,targetChar := "noClaim"]
+  ps.train.dt[get(changeCols)==1,targetChar := "claim"]
+  changeCols <- "targetChar"
   ps.train.dt[,(changeCols) := lapply(.SD,as.factor), .SDcols = changeCols]
   
+  changeCols <- c(categorical.var,ordinal.var)
+  ps.train.dt[,(changeCols) := lapply(.SD,as.factor), .SDcols = changeCols]
+  ps.test.dt[,(changeCols) := lapply(.SD,as.factor), .SDcols = changeCols]
+  
+  str(ps.train.dt)  
 #---
 # Scale the variables
 #---
@@ -76,37 +84,71 @@ source("Functions.R")
 #---
 # Create a validation set
 #---
-  Train <- createDataPartition(ps.train.dt$target,p=0.8,list=FALSE)
+  Train <- createDataPartition(ps.train.dt$targetChar,p=0.8,list=FALSE)
   train.dt <- ps.train.dt[Train,]    
   validate.dt <- ps.train.dt[-Train,]
   rm(Train)
-    
+  str(train.dt)
+      
 #---
 # Build a model with all of the variables to get a baseline
 #---
   # Set up resampling since we are imbalanced
-  trainCtrl <- trainControl(method="cv",
+  # trainCtrl <- trainControl(method="repeatedcv", repeats = 5,
+  #                           #summaryFunction = twoClassSummary, 
+  #                           #classProbs = TRUE,
+  #                           savePredictions = TRUE)
+  trainCtrl <- trainControl(method="cv", 
                             #summaryFunction = twoClassSummary, 
                             #classProbs = TRUE,
                             savePredictions = TRUE)
   
   # general logistic regression
-  allVarLogReg.mod <- train(target~., data=train.dt[,-1], 
+  allVarLogReg.mod <- train(targetChar~., data=train.dt[,-c(1,2)], 
                             method="glm", family="binomial",
                             trControl=trainCtrl)
     # attributes(allVarLogReg.mod)
     allVarLogReg.mod$finalModel
     allVarLogReg.mod$results
     varImp(allVarLogReg.mod)
+    plot(varImp(allVarLogReg.mod),main="LogReg - Variable Importance")
     
     allVarLogReg.mod$pred
     
   # now use model to predict on validation set
   predictLogReg <- predict(allVarLogReg.mod, newdata = validate.dt)
-    confusionMatrix(predictLogReg,validate.dt$target)  
+    confusionMatrix(predictLogReg,validate.dt$targetChar)  
   predictLogReg <- predict(allVarLogReg.mod, newdata = validate.dt,type = 'prob')
-    logReg.ROC <- roc(predictor=predictLogReg$`1`,
-                      response = validate.dt$target)
+    logReg.ROC <- roc(predictor=predictLogReg$claim,
+                      response = validate.dt$targetChar)
     plot(logReg.ROC,main="LogReg ROC")
     logReg.ROC$auc
+    # logReg.ROC$thresholds
+    
+  # Using ROCR package  
+  #predictLogReg <- predict(allVarLogReg.mod, newdata = validate.dt)
+    #confusionMatrix(predictLogReg,validate.dt$target)
+    pred <- prediction(predictLogReg$claim,validate.dt$targetChar)
+    perf <- performance(pred,measure = "tpr", x.measure = "fpr")
+    plot(perf)
+    abline(a=0,b=1)    
+    
+    cost.perf <- performance(pred,"cost")
+    plot(cost.perf)
+    
+    acc.perf <- performance(pred, measure = "acc")
+    plot(acc.perf)
+    
+    auc.perf <- performance(pred, measure = "auc")
+    auc.perf@y.values
+    
+    pred.cut <- opt.cut(perf = perf, pred = pred)
+    print(pred.cut)    
+    cutoff <- pred.cut[3]
+    # cutoff <- 0.08
+    
+    mergeValPred <- data.table(true = validate.dt$targetChar, probPred = predictLogReg$claim)
+    mergeValPred[probPred >= cutoff,pred := "claim"]
+    mergeValPred[probPred < cutoff,pred := "noClaim"]
+    confusionMatrix(mergeValPred$true,mergeValPred$pred)
     
