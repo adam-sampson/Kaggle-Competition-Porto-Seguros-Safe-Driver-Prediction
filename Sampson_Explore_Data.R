@@ -20,7 +20,8 @@
                 "scales",
                 "ggthemes",
                 "ggExtra",
-                "ggcorrplot")
+                "ggcorrplot",
+                "tidyr")
   loadPackages(packages)
   rm(packages)
   
@@ -117,24 +118,16 @@
              lab=TRUE,
              lab_size=3,
              method="circle")
-    
+  #### 
+  # ps_car_13 correlates to ps_car_15
+  # ps_car_04_cat correlates to ps_car_13 and ps_car_12
+  # ps_reg_03 correlates to ps_reg_02 and ps_reg_01
+  # ps_ind_14 correlates to ps_ind_11_bin and ps_ind_12_bin
+  # ps_ind_16_bin negatively correlates to ps_ind_17_bin and ps_ind_18_bin
+  ####
+  
   # Bar charts for binary data
   # calculate new df with the percent of each bin
-  calcPercentOfTotal <- function(in.dt,colName) {
-    percent.df <- data.frame()
-    totTargZero <- length(in.dt[target==0,target])
-    totTargOne  <- length(in.dt[target==1,target])
-    for(vals in unique(select(in.dt,colName)[[1]])) {
-      temp.dt <- in.dt[get(colName) == vals]
-      #valCount <- length(temp.dt[,get(colName)])
-      percentPos <- length(temp.dt[target == 1,get(colName)]) / totTargOne
-      percentNeg <- length(temp.dt[target == 0,get(colName)]) / totTargZero
-      percent.df <- percent.df %>% rbind(data.frame(target = c(1,0),
-                                                    value = c(vals,vals), 
-                                                    percent = c(percentPos,percentNeg)))
-    }
-    return(percent.df)
-  }
   
   calcPercentOfTotal(ps.train.dt,"ps_ind_06_bin")
   
@@ -150,6 +143,26 @@
     readline(prompt = "Press enter to view next plot.")
   }
   
+  #####
+  # ps_ind_06_bin appears to have 5-10% relation to 0 or 1 target out
+  # ps_ind_07_bin appears to have 5-10% relation to 0 or 1 target out
+  # ps_ind_08_bin appears to have 1-3% relation to 0 or 1 target out
+  # ps_ind_09_bin appears to have 1-2% relation to 0 or 1 target out
+  # ps_ind_10_bin appears to have 0% relation to 0 or 1 target out
+  # ps_ind_11_bin appears to have 0% relation to 0 or 1 target out
+  # ps_ind_12_bin appears to have <1% relation to 0 or 1 target out
+  # ps_ind_13_bin appears to have 0% relation to 0 or 1 target out
+  # ps_ind_16_bin appears to have 3-6% relation to 0 or 1 target out
+  # ps_ind_17_bin appears to have 2-5% relation to 0 or 1 target out
+  # ps_ind_18_bin appears to have 1% relation to 0 or 1 target out
+  # ps_calc_15_bin appears to have 0% relation to 0 or 1 target out
+  # ps_calc_16_bin appears to have 1% relation to 0 or 1 target out
+  # ps_calc_17_bin appears to have 0-1% relation to 0 or 1 target out
+  # ps_calc_18_bin appears to have 0-1% relation to 0 or 1 target out
+  # ps_calc_19_bin appears to have 1% relation to 0 or 1 target out
+  # ps_calc_20_bin appears to have 1% relation to 0 or 1 target out
+  ####
+  
   for (i in categorical.var) {
     plot <- ggplot(calcPercentOfTotal(ps.train.dt,i)) +
       geom_bar(aes(x=value,
@@ -162,6 +175,35 @@
     readline(prompt = "Press enter to view next plot.")
   }
   
+  temp <- calcPercentOfTotal(ps.train.dt,"ps_car_11_cat")
+  temp <- temp %>% spread(target,percent)
+  names(temp) <- c("value","x0","x1")
+  temp <- temp %>% mutate(diff = x0-x1)
+  max(temp$diff)
+  min(temp$diff)
+  mean(temp$diff)
+  temp <- temp %>% mutate(keep = ifelse(diff <= 0,
+                                        ifelse(abs(diff) > 0.005, -1, 0),
+                                        ifelse(abs(diff) > 0.005, 1, 0)))
+  rm(temp)
+  
+  ####
+  # ps_ind_02_cat values 1 and -1/2 appear to have 2-3% relation, 3/4 <1% relation. 
+  # ps_ind_04_cat values 1 and -1/2 appear to have 2-3% relation
+  # ps_ind_05_cat values 0 and -1/2/4/5 appear to have 3-6% relation, 1/3/5 very little
+  # ps_car_01_cat values 6/7 and -1/9/11 appear to have 3-6% relation, 0/1/5/8 less, and 1/2/3/10 very little
+  # ps_car_02_cat values 0 and 1 appear to have 2-4% relation, -1 very little
+  # ps_car_03_cat values -1 and 1 appear to have 3-6% relation, 0 <1% relation.
+  # ps_car_04_cat values 0 and 1/2/3/4/5/6/7/8/9 appear to have 3-6% relation.
+  # ps_car_05_cat values -1 and 1/2 appear to have 3-6%
+  # ps_car_06_cat values 0/11 and 13/15/9/17, 1/4/14 and 2/5/7/8/10/11/12/16, 3/6 very little
+  # ps_car_07_cat values -1/0 and 1 appear to have 1-2%
+  # ps_car_08_cat values 0 and 1 appear to have 1-3%
+  # ps_car_09_cat values 0 and 1 appear to have 2-4%, -1/2/3/4 very little
+  # ps_cat_10_cat appears to have very little impact.
+  # ps_car_11_cat needs a closer look (too many vars). Keep 41 and 104 as -1, keep 32,64,82,99,103 as 1, everything else 0.
+  ####
+  
   for (i in ordinal.var) {
     plot <- ggplot(calcPercentOfTotal(ps.train.dt,i)) +
       geom_bar(aes(x=value,
@@ -173,6 +215,30 @@
     print(plot)
     readline(prompt = "Press enter to view next plot.")
   }
+  
+  ####
+  # ind_01 keep some 0/1 and 3/4/5/6/7, 2
+  # ind_03 keep some 2/3/4 and 0/5/6/7/8, 1/9/10/11
+  # ind_14 remove
+  # ind_15 keep some 0/1/2/3/4/5/6/7 and 8/9/10/11/12/13
+  # reg_01 keep some 1/2/3/4/5 and 0/7/8/9, 6
+  # reg_02 keep some 0/1/2/3 and 5/6/7/8/9/1/11/12/13/14/15/16/17/18, 4
+  # car_11 remove
+  # calc_01 remove
+  # calc_02 unsure
+  # calc_03 unsure
+  # calc_04 remove
+  # calc_05 remove
+  # calc_06 unsure
+  # calc_07 unsure
+  # calc_08 remove
+  # calc_09 unsure
+  # calc_10 unsure
+  # calc_11 unsure
+  # calc_12 remove
+  # calc_13 remove
+  # calc_14 unsure
+  ####
   
   ## For density plots
   
@@ -191,6 +257,14 @@
     print(plot)
     readline(prompt = "Press enter to view next plot.")
   }
+  
+  ####
+  # ps_reg_03 minimal separation
+  # ps_car_12 minimal separation
+  # ps_car_13 small separation
+  # ps_car_14 small separation
+  # ps_car_15 minimal separation
+  ####
   
   for (i in ordinal.var) {
     plot <- ggplot(ps.train.dt) +
@@ -215,6 +289,14 @@
   ggMarginal(plot, type="histogram",fill="transparent")
   print(plot)  
 
+  ####
+  # ps_reg_03 visibal difference where 0 doesn't overlap
+  # ps_car_12 visible locations where points in noClaim are heavy
+  # ps_car_13 visible areas where noClaim doesn't overlap much
+  # ps_car_14 mayby minor areas where noClaim are heavy, but hard to tell
+  # ps_car_15 hard to see anything
+  ####
+  
 #---
 # Consider what to do about -1 values.
 #---

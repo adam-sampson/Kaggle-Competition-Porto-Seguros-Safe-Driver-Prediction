@@ -92,3 +92,19 @@ opt.cut = function(perf, pred){
       cutoff = p[[ind]])
   }, perf@x.values, perf@y.values, pred@cutoffs)
 } 
+
+calcPercentOfTotal <- function(in.dt,colName) {
+  percent.df <- data.frame()
+  totTargZero <- length(in.dt[target==0,target])
+  totTargOne  <- length(in.dt[target==1,target])
+  for(vals in unique(select(in.dt,colName)[[1]])) {
+    temp.dt <- in.dt[get(colName) == vals]
+    #valCount <- length(temp.dt[,get(colName)])
+    percentPos <- length(temp.dt[target == 1,get(colName)]) / totTargOne
+    percentNeg <- length(temp.dt[target == 0,get(colName)]) / totTargZero
+    percent.df <- percent.df %>% rbind(data.frame(target = c(1,0),
+                                                  value = c(vals,vals), 
+                                                  percent = c(percentPos,percentNeg)))
+  }
+  return(percent.df)
+}
