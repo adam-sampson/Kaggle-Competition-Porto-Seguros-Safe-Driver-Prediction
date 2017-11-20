@@ -453,6 +453,10 @@ set.seed(42)
     # train.unique <- lapply(ps.train.dt[,-c(1,2)],unique)
   
   #---
+  # Deal with the -1 values in the interval variables!
+  #---
+
+  #---
   # Covert categorical to factors!
   #---
     # str(ps.train.dt)
