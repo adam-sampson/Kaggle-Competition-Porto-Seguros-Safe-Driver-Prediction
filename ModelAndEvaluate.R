@@ -459,9 +459,10 @@ set.seed(42)
     gc(verbose = TRUE)
     
     changeCols <- names(ps.train.dt)
-    changeCols <- changeCols[-c(1,20,21)]
+    changeCols <- changeCols[-c(1,19,20,21)]
     ps.train.dt[,(changeCols) := lapply(.SD,as.factor), .SDcols = changeCols]
     # ps.test.dt[,(changeCols) := lapply(.SD,as.factor), .SDcols = changeCols]
+    # str(ps.train.dt)
     
   #---
   # Scale the variables
@@ -492,8 +493,8 @@ set.seed(42)
         trainCtrl <- trainControl(method="repeatedcv", repeats = 5,
                                   #summaryFunction = twoClassSummary, 
                                   classProbs = TRUE,
-                                  savePredictions = TRUE,
-                                  sampling = "down")
+                                  #savePredictions = TRUE,
+                                  sampling = "smote")
         
         featVarLogReg.mod <- train(targetChar~., data=train.dt[,-c(1,2)], 
                                   method="glm", family="binomial", 
@@ -512,8 +513,8 @@ set.seed(42)
         c50trainCtrl <- trainControl(method="repeatedcv", repeats = 5,
                                      #summaryFunction = twoClassSummary, 
                                      classProbs = TRUE,
-                                     savePredictions = TRUE,
-                                     sampling = "down")
+                                     #savePredictions = TRUE,
+                                     sampling = "smote")
         
         grid <- expand.grid( .winnow = c(TRUE,FALSE), .trials=c(1,5,10,15,20), .model="tree" )
         
@@ -533,8 +534,8 @@ set.seed(42)
         NBtrainCtrl <- trainControl(method="repeatedcv", repeats = 5,
                                     #summaryFunction = twoClassSummary, 
                                     classProbs = TRUE,
-                                    savePredictions = TRUE,
-                                    sampling = "down")
+                                    #savePredictions = TRUE,
+                                    sampling = "smote")
         
         featVarNB <- train(targetChar~., data=train.dt[,-c(1,2)],
                           method = 'naive_bayes',
@@ -551,8 +552,8 @@ set.seed(42)
         NNtrainCtrl <- trainControl(method="repeatedcv", repeats = 5,
                                     #summaryFunction = twoClassSummary, 
                                     classProbs = TRUE,
-                                    savePredictions = TRUE,
-                                    sampling = "down")
+                                    #savePredictions = TRUE,
+                                    sampling = "smote")
         
         # NNgrid <- expand.grid(size=c(10),decay=c(0.1))
         NNgrid <- expand.grid(size=c(10))
