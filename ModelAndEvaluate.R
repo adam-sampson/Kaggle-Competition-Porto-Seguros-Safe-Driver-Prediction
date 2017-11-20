@@ -489,11 +489,11 @@ set.seed(42)
         set.seed(1000)
         
         # Set up resampling since we are imbalanced
-        trainCtrl <- trainControl(method="cv", 
+        trainCtrl <- trainControl(method="repeatedcv", repeats = 5,
                                   #summaryFunction = twoClassSummary, 
                                   classProbs = TRUE,
                                   savePredictions = TRUE,
-                                  sampling = "smote")
+                                  sampling = "down")
         
         featVarLogReg.mod <- train(targetChar~., data=train.dt[,-c(1,2)], 
                                   method="glm", family="binomial", 
@@ -509,11 +509,11 @@ set.seed(42)
       runC50 <- function() { 
         set.seed(1000)
         # Set up resampling since we are imbalanced
-        c50trainCtrl <- trainControl(method="cv", 
-                                     # summaryFunction = twoClassSummary, 
+        c50trainCtrl <- trainControl(method="repeatedcv", repeats = 5,
+                                     #summaryFunction = twoClassSummary, 
                                      classProbs = TRUE,
                                      savePredictions = TRUE,
-                                     sampling = "smote")
+                                     sampling = "down")
         
         grid <- expand.grid( .winnow = c(TRUE,FALSE), .trials=c(1,5,10,15,20), .model="tree" )
         
@@ -530,11 +530,11 @@ set.seed(42)
       runNB <- function () {  
         set.seed(1000)
         
-        NBtrainCtrl <- trainControl(method="cv", 
-                                    # summaryFunction = twoClassSummary, 
+        NBtrainCtrl <- trainControl(method="repeatedcv", repeats = 5,
+                                    #summaryFunction = twoClassSummary, 
                                     classProbs = TRUE,
                                     savePredictions = TRUE,
-                                    sampling = "smote")
+                                    sampling = "down")
         
         featVarNB <- train(targetChar~., data=train.dt[,-c(1,2)],
                           method = 'naive_bayes',
@@ -548,11 +548,11 @@ set.seed(42)
       runNnet <- function () {  
         set.seed(1000)
         
-        NNtrainCtrl <- trainControl(method="cv", 
-                                    # summaryFunction = twoClassSummary, 
+        NNtrainCtrl <- trainControl(method="repeatedcv", repeats = 5,
+                                    #summaryFunction = twoClassSummary, 
                                     classProbs = TRUE,
                                     savePredictions = TRUE,
-                                    sampling = "smote")
+                                    sampling = "down")
         
         # NNgrid <- expand.grid(size=c(10),decay=c(0.1))
         NNgrid <- expand.grid(size=c(10))
