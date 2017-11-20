@@ -501,6 +501,7 @@ set.seed(42)
                                   trControl=trainCtrl)
         
         saveRDS(featVarLogReg.mod,file="featVarLogReg.mod.RDS")
+        print("Logistic Regression Complete...")
       }  
     #---
     # C5.0
@@ -521,6 +522,7 @@ set.seed(42)
                                # metric = "ROC",
                                trControl=c50trainCtrl)
         saveRDS(featVarC50.mod,file="featVarC50.mod.RDS")
+        print("C5.0 Complete...")
       }  
     #---
     # Naive Bayes
@@ -538,6 +540,7 @@ set.seed(42)
                           method = 'naive_bayes',
                           trControl=NBtrainCtrl)
         saveRDS(featVarNB,file="featVarNB.mod.RDS")
+        print("Naive Bayes Complete...")
       }  
     #---
     # nnet
@@ -560,13 +563,18 @@ set.seed(42)
                           #tuneGrid = NNgrid,
                           trControl=NNtrainCtrl)
         saveRDS(featVarNN,file="featVarNN.mod.RDS")
+        print("Neural Net Complete...")
       }  
     
     #---
     # Try to run all the models, using try() in case something fails...
     #---
-      
+      print("Beginning...")
       try(runNB())
+      gc(verbose = TRUE)
       try(runLogReg())
+      gc(verbose = TRUE)
       try(runNnet())
+      gc(verbose = TRUE)
       try(runC50())
+      gc(verbose = TRUE)
