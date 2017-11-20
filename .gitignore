@@ -3,3 +3,4 @@ train/train.csv
 test.csv
 train.csv
 .Rproj.user
+featVarNB.mod.RDS
