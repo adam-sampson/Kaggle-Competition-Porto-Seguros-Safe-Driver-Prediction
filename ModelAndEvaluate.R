@@ -19,7 +19,8 @@ packages <- c("data.table",
               "caret",
               "e1071",
               "ROCR",
-              "pROC"
+              "pROC",
+              "C50"
               )
 loadPackages(packages)
 rm(packages)
@@ -71,8 +72,11 @@ set.seed(42)
   ps.train.dt[get(changeCols)==1,targetChar := "claim"]
   changeCols <- "targetChar"
   ps.train.dt[,(changeCols) := lapply(.SD,as.factor), .SDcols = changeCols]
+    str(ps.train.dt$targetChar)
+  ps.train.dt[,(changeCols) := lapply(.SD,relevel,"noClaim"), .SDcols = changeCols]
+    str(ps.train.dt$targetChar)
   
-  changeCols <- c(categorical.var,ordinal.var)
+  changeCols <- c(categorical.var)
   ps.train.dt[,(changeCols) := lapply(.SD,as.factor), .SDcols = changeCols]
   ps.test.dt[,(changeCols) := lapply(.SD,as.factor), .SDcols = changeCols]
   
@@ -91,21 +95,25 @@ set.seed(42)
   str(train.dt)
       
 #---
-# Build a model with all of the variables to get a baseline
+# Build a logistic regression model with all of the variables to get a baseline
 #---
+  set.seed(1000)
   # Set up resampling since we are imbalanced
-  # trainCtrl <- trainControl(method="repeatedcv", repeats = 5,
+  trainCtrl <- trainControl(method="cv", 
+                            #summaryFunction = twoClassSummary, 
+                            classProbs = TRUE,
+                            savePredictions = TRUE,
+                            sampling = "smote")
+  
+  # trainCtrl <- trainControl(method="repeatedcv", number=10, repeats=5 
   #                           #summaryFunction = twoClassSummary, 
   #                           #classProbs = TRUE,
   #                           savePredictions = TRUE)
-  trainCtrl <- trainControl(method="cv", 
-                            #summaryFunction = twoClassSummary, 
-                            #classProbs = TRUE,
-                            savePredictions = TRUE)
   
-  # general logistic regression
+  # general logistic regression using smote sampling (instead of upsampling)
   allVarLogReg.mod <- train(targetChar~., data=train.dt[,-c(1,2)], 
-                            method="glm", family="binomial",
+                            method="glm", family="binomial", 
+                            metric = "ROC",
                             trControl=trainCtrl)
     # attributes(allVarLogReg.mod)
     allVarLogReg.mod$finalModel
@@ -113,7 +121,7 @@ set.seed(42)
     varImp(allVarLogReg.mod)
     plot(varImp(allVarLogReg.mod),main="LogReg - Variable Importance")
     
-    allVarLogReg.mod$pred
+    # allVarLogReg.mod$pred
     
   # now use model to predict on validation set
   predictLogReg <- predict(allVarLogReg.mod, newdata = validate.dt)
@@ -128,7 +136,7 @@ set.seed(42)
   # Using ROCR package  
   #predictLogReg <- predict(allVarLogReg.mod, newdata = validate.dt)
     #confusionMatrix(predictLogReg,validate.dt$target)
-    pred <- prediction(predictLogReg$claim,validate.dt$targetChar)
+    pred <- prediction(predictLogReg$noClaim,validate.dt$targetChar)
     perf <- performance(pred,measure = "tpr", x.measure = "fpr")
     plot(perf)
     abline(a=0,b=1)    
@@ -151,4 +159,63 @@ set.seed(42)
     mergeValPred[probPred >= cutoff,pred := "claim"]
     mergeValPred[probPred < cutoff,pred := "noClaim"]
     confusionMatrix(mergeValPred$true,mergeValPred$pred)
+
+#---
+# Build a C5.0 tree model with all of the variables to get a baseline
+#--- 
+  set.seed(1000)
+  # Set up resampling since we are imbalanced
+  c50trainCtrl <- trainControl(method="cv", 
+                            # summaryFunction = twoClassSummary, 
+                             classProbs = TRUE,
+                             savePredictions = TRUE,
+                             sampling = "smote")
+  
+  grid <- expand.grid( .winnow = c(TRUE,FALSE), .trials=c(1,5,10,15,20), .model="tree" )
+  
+  allVarC50.mod <- train(targetChar~., data=train.dt[,-c(1,2)], 
+                            tuneGrid=grid,method="C5.0",
+                            # metric = "ROC",
+                            trControl=c50trainCtrl)
+  allVarC50.mod$finalModel
+  allVarC50.mod$results
+  summary(allVarC50.mod)
+  
+  predictC50 <- predict(allVarC50.mod, newdata = validate.dt)
+    confusionMatrix(predictC50,validate.dt$targetChar)
+  predictC50 <- predict(allVarC50.mod, newdata = validate.dt, type = 'prob')
+    C50.ROC <- roc(predictor=predictC50$claim,
+                      response = validate.dt$targetChar)
+    plot(C50.ROC,main="C50 tree ROC")
+    C50.ROC$auc
+    
+#---
+# Build a Naive Bayes model with all of the variables to get a baseline
+#---
+  set.seed(1000)
+  
+  NBtrainCtrl <- trainControl(method="cv", 
+                               # summaryFunction = twoClassSummary, 
+                               classProbs = TRUE,
+                               savePredictions = TRUE,
+                               sampling = "smote")
+
+  allVarNB <- train(targetChar~., data=train.dt[,-c(1,2)],
+                          method = 'naive_bayes',
+                          trControl=NBtrainCtrl)
+  summary(allVarNB)
+  allVarNB$results
+  
+  predictNB <- predict(allVarNB, newdata = validate.dt)
+    confusionMatrix(predictNB,validate.dt$targetChar)
+  predictNB <- predict(allVarNB, newdata = validate.dt, type='prob')
+    NB.ROC <- roc(predictor=predictNB$claim,
+                   response = validate.dt$targetChar)
+    plot(NB.ROC,main='Naive Bayes ROC')
+    
+            
+#---
+# Build a neural network using mxnet with all of the variables to get a baseline
+#---
+  set.seed(1000)
     
