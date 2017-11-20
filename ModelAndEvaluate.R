@@ -487,6 +487,7 @@ set.seed(42)
     # Log Regression
     #---
       runLogReg <- function() {
+        start_time <- Sys.time()
         set.seed(1000)
         
         # Set up resampling since we are imbalanced
@@ -503,11 +504,14 @@ set.seed(42)
         
         saveRDS(featVarLogReg.mod,file="featVarLogReg.mod.RDS")
         print("Logistic Regression Complete...")
+        end_time <- Sys.time()
+        write(paste("Log Reg took: ",end_time-start_time),file = "lot.txt",append = TRUE)
       }  
     #---
     # C5.0
     #---
       runC50 <- function() { 
+        start_time <- Sys.time()
         set.seed(1000)
         # Set up resampling since we are imbalanced
         c50trainCtrl <- trainControl(method="repeatedcv", repeats = 5,
@@ -524,11 +528,14 @@ set.seed(42)
                                trControl=c50trainCtrl)
         saveRDS(featVarC50.mod,file="featVarC50.mod.RDS")
         print("C5.0 Complete...")
+        end_time <- Sys.time()
+        write(paste("C5.0 took: ",end_time-start_time),file = "lot.txt",append = TRUE)
       }  
     #---
     # Naive Bayes
     #---
       runNB <- function () {  
+        start_time <- Sys.time()
         set.seed(1000)
         
         NBtrainCtrl <- trainControl(method="repeatedcv", repeats = 5,
@@ -542,11 +549,14 @@ set.seed(42)
                           trControl=NBtrainCtrl)
         saveRDS(featVarNB,file="featVarNB.mod.RDS")
         print("Naive Bayes Complete...")
+        end_time <- Sys.time()
+        write(paste("Naive Bayes took: ",end_time-start_time),file = "lot.txt",append = TRUE)
       }  
     #---
     # nnet
     #---
       runNnet <- function () {  
+        start_time <- Sys.time()
         set.seed(1000)
         
         NNtrainCtrl <- trainControl(method="repeatedcv", repeats = 5,
@@ -565,6 +575,8 @@ set.seed(42)
                           trControl=NNtrainCtrl)
         saveRDS(featVarNN,file="featVarNN.mod.RDS")
         print("Neural Net Complete...")
+        end_time <- Sys.time()
+        write(paste("nnet took: ",end_time-start_time),file = "lot.txt",append = TRUE)
       }  
     
     #---
