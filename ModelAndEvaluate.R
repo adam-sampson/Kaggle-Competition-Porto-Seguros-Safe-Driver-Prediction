@@ -20,7 +20,8 @@ packages <- c("data.table",
               "e1071",
               "ROCR",
               "pROC",
-              "C50"
+              "C50",
+              "naivebayes"
               )
 loadPackages(packages)
 rm(packages)
@@ -323,155 +324,159 @@ set.seed(42)
     
     # str(ps.train.dt)  
   
-  ####
-  # Feature Engineering!
-  #### 
-  # ps_car_13 correlates to ps_car_15(remove)
-  # ps_car_04_cat(remove) correlates to ps_car_13 and ps_car_12(remove)
-  # ps_reg_03(remove) correlates to ps_reg_02 and ps_reg_01(remove)
-  # ps_ind_14(remove) correlates to ps_ind_11_bin(remove) and ps_ind_12_bin
-  # ps_ind_16_bin(remove) negatively correlates to ps_ind_17_bin and ps_ind_18_bin(remove)
-  ####
-    ps.train.dt <- ps.train.dt %>% select(-ps_car_15, 
-                         -ps_car_04_cat,
-                         -ps_car_12,
-                         -ps_reg_03,
-                         -ps_reg_01,
-                         -ps_ind_14,
-                         -ps_ind_11_bin,
-                         -ps_ind_16_bin,
-                         -ps_ind_18_bin)
-    
-  #####
-  # ps_ind_06_bin appears to have 5-10% relation to 0 or 1 target out ##naive_bayes found important
-  # ps_ind_07_bin appears to have 5-10% relation to 0 or 1 target out ##naive_bayes found important
-  # ps_ind_08_bin appears to have 1-3% relation to 0 or 1 target out (remove)
-  # ps_ind_09_bin appears to have 1-2% relation to 0 or 1 target out (remove)
-  # ps_ind_10_bin appears to have 0% relation to 0 or 1 target out (remove)
-  # ps_ind_11_bin appears to have 0% relation to 0 or 1 target out (remove)
-  # ps_ind_12_bin appears to have <1% relation to 0 or 1 target out (remove)
-  # ps_ind_13_bin appears to have 0% relation to 0 or 1 target out (remove)
-  # ps_ind_16_bin appears to have 3-6% relation to 0 or 1 target out
-  # ps_ind_17_bin appears to have 2-5% relation to 0 or 1 target out
-  # ps_ind_18_bin appears to have 1% relation to 0 or 1 target out (remove)
-  # ps_calc_15_bin appears to have 0% relation to 0 or 1 target out (remove)
-  # ps_calc_16_bin appears to have 1% relation to 0 or 1 target out (remove)
-  # ps_calc_17_bin appears to have 0-1% relation to 0 or 1 target out ##naive_bayes found important (remove)
-  # ps_calc_18_bin appears to have 0-1% relation to 0 or 1 target out (remove)
-  # ps_calc_19_bin appears to have 1% relation to 0 or 1 target out (remove)
-  # ps_calc_20_bin appears to have 1% relation to 0 or 1 target out (remove)
-  ####
-    ps.train.dt <- ps.train.dt %>% select(-ps_ind_08_bin,-ps_ind_09_bin,-ps_ind_10_bin,-ps_ind_12_bin,
-                                          -ps_ind_13_bin,-ps_calc_15_bin,-ps_calc_16_bin,-ps_calc_17_bin,
-                                          -ps_calc_18_bin,-ps_calc_19_bin,-ps_calc_20_bin)
-    
-    
-  ####
-  # ps_ind_02_cat values 1 and -1/2 appear to have 2-3% relation, 3/4 <1% relation. 
-  # ps_ind_04_cat values 1 and -1/2 appear to have 2-3% relation
-  # ps_ind_05_cat values 0 and -1/2/4/5 appear to have 3-6% relation, 1/3/5 very little
-  # ps_car_01_cat values 6/7 and -1/9/11 appear to have 3-6% relation, 0/1/5/8 less, and 1/2/3/10 very little ##naive_bayes found important
-    
-  # ps_car_02_cat values 0 and 1 appear to have 2-4% relation, -1 very little (remove)
-  # ps_car_03_cat values -1 and 1 appear to have 3-6% relation, 0 <1% relation.
-  # ps_car_04_cat values 0 and 1/2/3/4/5/6/7/8/9 appear to have 3-6% relation. (removed earlier in correlation)
-  # ps_car_05_cat values -1 and 1/2 appear to have 3-6%
-  # ps_car_06_cat values 0/11 and 13/15/9/17, 1/4/14 and 2/5/7/8/10/11/12/16, 3/6 very little
-    
-  # ps_car_07_cat values -1/0 and 1 appear to have 1-2% (remove)
-  # ps_car_08_cat values 0 and 1 appear to have 1-3% (remove)
-  # ps_car_09_cat values 0 and 1 appear to have 2-4%, -1/2/3/4 very little
-  # ps_car_10_cat appears to have very little impact. (remove)
-  # ps_car_11_cat needs a closer look (too many vars). Keep 41 and 104 as -1, keep 32,64,82,99,103 as -2, everything else 0.
-  ####
-    ps.train.dt <- ps.train.dt %>% select(-ps_car_07_cat,-ps_car_08_cat,-ps_car_10_cat, -ps_car_02_cat)
-    ps.train.dt[ps_ind_02_cat == -1, ps_ind_02_cat := 2]
-    ps.train.dt[ps_ind_02_cat == 4, ps_ind_02_cat := 3]
-    ps.train.dt[ps_ind_04_cat == -1, ps_ind_04_cat := 2]
-    ps.train.dt[(ps_ind_05_cat == -1)|(ps_ind_05_cat == 2)|(ps_ind_05_cat == 4)|(ps_ind_05_cat == 5), ps_ind_05_cat := 2]
-    ps.train.dt[(ps_ind_05_cat == 1)|(ps_ind_05_cat == 3)|(ps_ind_05_cat == 5), ps_ind_05_cat := 1]
-    ps.train.dt[(ps_ind_05_cat != 2)&(ps_ind_05_cat != 1),ps_ind_05_cat:=0]
-    ps.train.dt[(ps_car_01_cat==7),ps_car_01_cat:=6]
-    ps.train.dt[(ps_car_01_cat==-1)|(ps_car_01_cat ==9)|(ps_car_01_cat==11),ps_car_01_cat:=-1]
-    ps.train.dt[(ps_car_01_cat != -1)&(ps_car_01_cat != 6),ps_car_01_cat:=0]
-    ps.train.dt[(ps_car_05_cat == 2),ps_car_05_cat := 1]
-    ps.train.dt[(ps_car_06_cat == 11),ps_car_06_cat := 0]
-    ps.train.dt[(ps_car_06_cat == 9)|(ps_car_06_cat == 13)|(ps_car_06_cat == 15)|(ps_car_06_cat == 17),ps_car_06_cat:=9]
-    ps.train.dt[(ps_car_06_cat == 1)|(ps_car_06_cat == 4)|(ps_car_06_cat == 14),ps_car_06_cat:=1]
-    ps.train.dt[(ps_car_06_cat != 1)&(ps_car_06_cat != 9), ps_car_06_cat:=2]
-    ps.train.dt[(ps_car_09_cat != 0)&(ps_car_09_cat != 1),ps_car_09_cat := 2]
-    ps.train.dt[(ps_car_11_cat == 41)|(ps_car_11_cat == 104),ps_car_11_cat:=-1]
-    ps.train.dt[(ps_car_11_cat == 32)|(ps_car_11_cat == 64)|(ps_car_11_cat == 82)|(ps_car_11_cat == 99)|(ps_car_11_cat == 103),ps_car_11_cat := -2]
-    ps.train.dt[(ps_car_11_cat != -1)&(ps_car_11_cat != -2),ps_car_11_cat := 0]
-    
-    
-  ####
-  # ordinal
-  # ind_01 keep some 0/1 and 3/4/5/6/7, 2
-  # ind_03 keep some 2/3/4 and 0/5/6/7/8, 1/9/10/11
-  # ind_14 remove
-  # ind_15 keep some 0/1/2/3/4/5/6/7 and 8/9/10/11/12/13
-  # reg_01 keep some 1/2/3/4/5 and 0/7/8/9, 6 ##naive_bayes found important (removed in correlation)
-  # reg_02 keep some 0/1/2/3 and 5/6/7/8/9/1/11/12/13/14/15/16/17/18, 4 ##naive_bayes found important
-  # car_11 remove
-  # calc_01 remove
-  # calc_02 unsure
-  # calc_03 unsure
-  # calc_04 remove
-  # calc_05 remove
-  # calc_06 unsure
-  # calc_07 unsure
-  # calc_08 remove
-  # calc_09 unsure
-  # calc_10 unsure
-  # calc_11 unsure
-  # calc_12 remove
-  # calc_13 remove
-  # calc_14 unsure
-  ####
-    ps.train.dt <- ps.train.dt %>% select(-ps_car_11,-ps_calc_01,-ps_calc_02,-ps_calc_03,-ps_calc_04,
-                                          -ps_calc_05,-ps_calc_06,-ps_calc_07,-ps_calc_08,-ps_calc_09,
-                                          -ps_calc_10,-ps_calc_11,-ps_calc_12,-ps_calc_13,-ps_calc_14)
-    ps.train.dt[ps_ind_01 == 1,ps_ind_01 := 0]
-    ps.train.dt[(ps_ind_01 == 3)|(ps_ind_01 == 4)|(ps_ind_01 == 5)|(ps_ind_01 == 6)|(ps_ind_01 == 7)|(ps_ind_01 == 8),ps_ind_01 := 3]
-    ps.train.dt[(ps_ind_03 == 3)|(ps_ind_03 == 4),ps_ind_03 := 2]
-    ps.train.dt[(ps_ind_03 == 5)|(ps_ind_03 == 6)|(ps_ind_03 == 7)|(ps_ind_03 == 8),ps_ind_03 := 0]
-    ps.train.dt[(ps_ind_03 != 2)&(ps_ind_03 != 0), ps_ind_03 := 1]
-    ps.train.dt[(ps_ind_15 == 0)|(ps_ind_15 == 1)|(ps_ind_15 == 2)|(ps_ind_15 == 3)|(ps_ind_15 == 4)|(ps_ind_15 == 5)|(ps_ind_15 == 6)|(ps_ind_15 == 7),ps_ind_15 := 0]
-    ps.train.dt[(ps_ind_15 != 0),ps_ind_15 := 8]
-    ps.train.dt[(ps_reg_02 == 1)|(ps_reg_02 == 2)|(ps_reg_02 == 3),ps_reg_02 := 0]
-    ps.train.dt[(ps_reg_02 != 0)&(ps_reg_02 != 4), ps_reg_02 := 5]
-        
-  ####
-  # ps_reg_03 visibal difference where 0 doesn't overlap ##naive_bayes found important
-  # ps_car_12 visible locations where points in noClaim are heavy ##naive_bayes found very important
-  # ps_car_13 visible areas where noClaim doesn't overlap much ##naive_bayes found very important
-  # ps_car_14 mayby minor areas where noClaim are heavy, but hard to tell ##naive_bayes found important
-  # ps_car_15 hard to see anything ##naive_bayes found very important
-  ####
-    
-    # train.unique <- lapply(ps.train.dt[,-c(1,2)],unique)
+  # ####
+  # # Feature Engineering!
+  # #### 
+  # # ps_car_13 correlates to ps_car_15(remove)
+  # # ps_car_04_cat(remove) correlates to ps_car_13 and ps_car_12(remove)
+  # # ps_reg_03(remove) correlates to ps_reg_02 and ps_reg_01(remove)
+  # # ps_ind_14(remove) correlates to ps_ind_11_bin(remove) and ps_ind_12_bin
+  # # ps_ind_16_bin(remove) negatively correlates to ps_ind_17_bin and ps_ind_18_bin(remove)
+  # ####
+  #   ps.train.dt <- ps.train.dt %>% select(-ps_car_15, 
+  #                        -ps_car_04_cat,
+  #                        -ps_car_12,
+  #                        -ps_reg_03,
+  #                        -ps_reg_01,
+  #                        -ps_ind_14,
+  #                        -ps_ind_11_bin,
+  #                        -ps_ind_16_bin,
+  #                        -ps_ind_18_bin)
+  #   
+  # #####
+  # # ps_ind_06_bin appears to have 5-10% relation to 0 or 1 target out ##naive_bayes found important
+  # # ps_ind_07_bin appears to have 5-10% relation to 0 or 1 target out ##naive_bayes found important
+  # # ps_ind_08_bin appears to have 1-3% relation to 0 or 1 target out (remove)
+  # # ps_ind_09_bin appears to have 1-2% relation to 0 or 1 target out (remove)
+  # # ps_ind_10_bin appears to have 0% relation to 0 or 1 target out (remove)
+  # # ps_ind_11_bin appears to have 0% relation to 0 or 1 target out (remove)
+  # # ps_ind_12_bin appears to have <1% relation to 0 or 1 target out (remove)
+  # # ps_ind_13_bin appears to have 0% relation to 0 or 1 target out (remove)
+  # # ps_ind_16_bin appears to have 3-6% relation to 0 or 1 target out
+  # # ps_ind_17_bin appears to have 2-5% relation to 0 or 1 target out
+  # # ps_ind_18_bin appears to have 1% relation to 0 or 1 target out (remove)
+  # # ps_calc_15_bin appears to have 0% relation to 0 or 1 target out (remove)
+  # # ps_calc_16_bin appears to have 1% relation to 0 or 1 target out (remove)
+  # # ps_calc_17_bin appears to have 0-1% relation to 0 or 1 target out ##naive_bayes found important (remove)
+  # # ps_calc_18_bin appears to have 0-1% relation to 0 or 1 target out (remove)
+  # # ps_calc_19_bin appears to have 1% relation to 0 or 1 target out (remove)
+  # # ps_calc_20_bin appears to have 1% relation to 0 or 1 target out (remove)
+  # ####
+  #   ps.train.dt <- ps.train.dt %>% select(-ps_ind_08_bin,-ps_ind_09_bin,-ps_ind_10_bin,-ps_ind_12_bin,
+  #                                         -ps_ind_13_bin,-ps_calc_15_bin,-ps_calc_16_bin,-ps_calc_17_bin,
+  #                                         -ps_calc_18_bin,-ps_calc_19_bin,-ps_calc_20_bin)
+  #   
+  #   
+  # ####
+  # # ps_ind_02_cat values 1 and -1/2 appear to have 2-3% relation, 3/4 <1% relation. 
+  # # ps_ind_04_cat values 1 and -1/2 appear to have 2-3% relation
+  # # ps_ind_05_cat values 0 and -1/2/4/5 appear to have 3-6% relation, 1/3/5 very little
+  # # ps_car_01_cat values 6/7 and -1/9/11 appear to have 3-6% relation, 0/1/5/8 less, and 1/2/3/10 very little ##naive_bayes found important
+  #   
+  # # ps_car_02_cat values 0 and 1 appear to have 2-4% relation, -1 very little (remove)
+  # # ps_car_03_cat values -1 and 1 appear to have 3-6% relation, 0 <1% relation.
+  # # ps_car_04_cat values 0 and 1/2/3/4/5/6/7/8/9 appear to have 3-6% relation. (removed earlier in correlation)
+  # # ps_car_05_cat values -1 and 1/2 appear to have 3-6%
+  # # ps_car_06_cat values 0/11 and 13/15/9/17, 1/4/14 and 2/5/7/8/10/11/12/16, 3/6 very little
+  #   
+  # # ps_car_07_cat values -1/0 and 1 appear to have 1-2% (remove)
+  # # ps_car_08_cat values 0 and 1 appear to have 1-3% (remove)
+  # # ps_car_09_cat values 0 and 1 appear to have 2-4%, -1/2/3/4 very little
+  # # ps_car_10_cat appears to have very little impact. (remove)
+  # # ps_car_11_cat needs a closer look (too many vars). Keep 41 and 104 as -1, keep 32,64,82,99,103 as -2, everything else 0.
+  # ####
+  #   ps.train.dt <- ps.train.dt %>% select(-ps_car_07_cat,-ps_car_08_cat,-ps_car_10_cat, -ps_car_02_cat)
+  #   ps.train.dt[ps_ind_02_cat == -1, ps_ind_02_cat := 2]
+  #   ps.train.dt[ps_ind_02_cat == 4, ps_ind_02_cat := 3]
+  #   ps.train.dt[ps_ind_04_cat == -1, ps_ind_04_cat := 2]
+  #   ps.train.dt[(ps_ind_05_cat == -1)|(ps_ind_05_cat == 2)|(ps_ind_05_cat == 4)|(ps_ind_05_cat == 5), ps_ind_05_cat := 2]
+  #   ps.train.dt[(ps_ind_05_cat == 1)|(ps_ind_05_cat == 3)|(ps_ind_05_cat == 5), ps_ind_05_cat := 1]
+  #   ps.train.dt[(ps_ind_05_cat != 2)&(ps_ind_05_cat != 1),ps_ind_05_cat:=0]
+  #   ps.train.dt[(ps_car_01_cat==7),ps_car_01_cat:=6]
+  #   ps.train.dt[(ps_car_01_cat==-1)|(ps_car_01_cat ==9)|(ps_car_01_cat==11),ps_car_01_cat:=-1]
+  #   ps.train.dt[(ps_car_01_cat != -1)&(ps_car_01_cat != 6),ps_car_01_cat:=0]
+  #   ps.train.dt[(ps_car_05_cat == 2),ps_car_05_cat := 1]
+  #   ps.train.dt[(ps_car_06_cat == 11),ps_car_06_cat := 0]
+  #   ps.train.dt[(ps_car_06_cat == 9)|(ps_car_06_cat == 13)|(ps_car_06_cat == 15)|(ps_car_06_cat == 17),ps_car_06_cat:=9]
+  #   ps.train.dt[(ps_car_06_cat == 1)|(ps_car_06_cat == 4)|(ps_car_06_cat == 14),ps_car_06_cat:=1]
+  #   ps.train.dt[(ps_car_06_cat != 1)&(ps_car_06_cat != 9), ps_car_06_cat:=2]
+  #   ps.train.dt[(ps_car_09_cat != 0)&(ps_car_09_cat != 1),ps_car_09_cat := 2]
+  #   ps.train.dt[(ps_car_11_cat == 41)|(ps_car_11_cat == 104),ps_car_11_cat:=-1]
+  #   ps.train.dt[(ps_car_11_cat == 32)|(ps_car_11_cat == 64)|(ps_car_11_cat == 82)|(ps_car_11_cat == 99)|(ps_car_11_cat == 103),ps_car_11_cat := -2]
+  #   ps.train.dt[(ps_car_11_cat != -1)&(ps_car_11_cat != -2),ps_car_11_cat := 0]
+  #   
+  #   
+  # ####
+  # # ordinal
+  # # ind_01 keep some 0/1 and 3/4/5/6/7, 2
+  # # ind_03 keep some 2/3/4 and 0/5/6/7/8, 1/9/10/11
+  # # ind_14 remove
+  # # ind_15 keep some 0/1/2/3/4/5/6/7 and 8/9/10/11/12/13
+  # # reg_01 keep some 1/2/3/4/5 and 0/7/8/9, 6 ##naive_bayes found important (removed in correlation)
+  # # reg_02 keep some 0/1/2/3 and 5/6/7/8/9/1/11/12/13/14/15/16/17/18, 4 ##naive_bayes found important
+  # # car_11 remove
+  # # calc_01 remove
+  # # calc_02 unsure
+  # # calc_03 unsure
+  # # calc_04 remove
+  # # calc_05 remove
+  # # calc_06 unsure
+  # # calc_07 unsure
+  # # calc_08 remove
+  # # calc_09 unsure
+  # # calc_10 unsure
+  # # calc_11 unsure
+  # # calc_12 remove
+  # # calc_13 remove
+  # # calc_14 unsure
+  # ####
+  #   ps.train.dt <- ps.train.dt %>% select(-ps_car_11,-ps_calc_01,-ps_calc_02,-ps_calc_03,-ps_calc_04,
+  #                                         -ps_calc_05,-ps_calc_06,-ps_calc_07,-ps_calc_08,-ps_calc_09,
+  #                                         -ps_calc_10,-ps_calc_11,-ps_calc_12,-ps_calc_13,-ps_calc_14)
+  #   ps.train.dt[ps_ind_01 == 1,ps_ind_01 := 0]
+  #   ps.train.dt[(ps_ind_01 == 3)|(ps_ind_01 == 4)|(ps_ind_01 == 5)|(ps_ind_01 == 6)|(ps_ind_01 == 7)|(ps_ind_01 == 8),ps_ind_01 := 3]
+  #   ps.train.dt[(ps_ind_03 == 3)|(ps_ind_03 == 4),ps_ind_03 := 2]
+  #   ps.train.dt[(ps_ind_03 == 5)|(ps_ind_03 == 6)|(ps_ind_03 == 7)|(ps_ind_03 == 8),ps_ind_03 := 0]
+  #   ps.train.dt[(ps_ind_03 != 2)&(ps_ind_03 != 0), ps_ind_03 := 1]
+  #   ps.train.dt[(ps_ind_15 == 0)|(ps_ind_15 == 1)|(ps_ind_15 == 2)|(ps_ind_15 == 3)|(ps_ind_15 == 4)|(ps_ind_15 == 5)|(ps_ind_15 == 6)|(ps_ind_15 == 7),ps_ind_15 := 0]
+  #   ps.train.dt[(ps_ind_15 != 0),ps_ind_15 := 8]
+  #   ps.train.dt[(ps_reg_02 == 1)|(ps_reg_02 == 2)|(ps_reg_02 == 3),ps_reg_02 := 0]
+  #   ps.train.dt[(ps_reg_02 != 0)&(ps_reg_02 != 4), ps_reg_02 := 5]
+  #       
+  # ####
+  # # ps_reg_03 visibal difference where 0 doesn't overlap ##naive_bayes found important
+  # # ps_car_12 visible locations where points in noClaim are heavy ##naive_bayes found very important
+  # # ps_car_13 visible areas where noClaim doesn't overlap much ##naive_bayes found very important
+  # # ps_car_14 mayby minor areas where noClaim are heavy, but hard to tell ##naive_bayes found important
+  # # ps_car_15 hard to see anything ##naive_bayes found very important
+  # ####
+  #   
+  #   # train.unique <- lapply(ps.train.dt[,-c(1,2)],unique)
+  # 
+  # #---
+  # # Deal with the -1 values in the interval variables!
+  # #---
+  # 
+  # #---
+  # # Covert categorical to factors!
+  # #---
+  #   # str(ps.train.dt)
+  #   gc(verbose = TRUE)
+  #   
+  #   changeCols <- names(ps.train.dt)
+  #   changeCols <- changeCols[(changeCols != "id")&(changeCols != "ps_car_13")&(changeCols != "ps_car_14")]
+  #   ps.train.dt[,(changeCols) := lapply(.SD,as.factor), .SDcols = changeCols]
+  #   # ps.test.dt[,(changeCols) := lapply(.SD,as.factor), .SDcols = changeCols]
+  #   # str(ps.train.dt)
+  #   
+  # #---
+  # # Scale the variables
+  # #---
   
-  #---
-  # Deal with the -1 values in the interval variables!
-  #---
-
-  #---
-  # Covert categorical to factors!
-  #---
-    # str(ps.train.dt)
-    gc(verbose = TRUE)
+  featSelectTrain.dt <- performFeatSelection1(ps.train.dt)
+  featSelectTest.dt  <- performFeatSelection1(ps.test.dt)
+    str(featSelectTest.dt)
     
-    changeCols <- names(ps.train.dt)
-    changeCols <- changeCols[-c(1,19,20,21)]
-    ps.train.dt[,(changeCols) := lapply(.SD,as.factor), .SDcols = changeCols]
-    # ps.test.dt[,(changeCols) := lapply(.SD,as.factor), .SDcols = changeCols]
-    # str(ps.train.dt)
-    
-  #---
-  # Scale the variables
-  #---
-  
   #---
   # Create a validation set
   #---
@@ -595,3 +600,38 @@ set.seed(42)
       gc(verbose = TRUE)
       try(runC50())
       gc(verbose = TRUE)
+
+  #---
+  # Check the results
+  #---
+    train.dt <- readRDS(file = "train.dt.RDS")
+    validate.dt <- readRDS(file = "validate.dt.RDS")
+    
+    featVarNB.mod <- readRDS(file = "featVarNB.mod.RDS")
+    rm(featVarNB.mod)
+    featVarLR.mod <- readRDS(file = "featVarLogReg.mod.RDS")
+    
+    this.mod <- featVarNB.mod
+    this.mod <- featVarLR.mod
+    
+    summary(this.mod)
+    this.mod$results
+    varImp(this.mod)
+    plot(varImp(this.mod))
+    
+    predictOut <- predict(this.mod, newdata = validate.dt)    
+    confusionMatrix(predictOut,validate.dt$targetChar)
+    
+    predictProb <- predict(this.mod, newdata = validate.dt, type = 'prob')
+    this.ROC <- roc(predictor=predictProb$claim, response = validate.dt$targetChar)
+    plot(this.ROC,main='ROC')
+    this.ROC$auc
+  
+  #---
+  # Apply to actual test data...
+  #---
+    actualPred <- predict(this.mod, newdata = featSelectTest.dt, type = 'prob')
+    actualOut <- data.table(id = featSelectTest.dt$id,target = actualPred$claim)
+    # fwrite(actualOut,file="Samps_NaiveBayes_featSelct1.csv")
+    fwrite(actualOut,file="Samps_LogReg_featSelct1.csv")
+    
