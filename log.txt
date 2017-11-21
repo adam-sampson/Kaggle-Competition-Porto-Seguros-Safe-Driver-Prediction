@@ -1,3 +1,11 @@
 Begin Log.
 
 Naive Bayes took:  12.2548076616393
+Log Reg started at:  2017-11-21 12:47:04
+Log Reg started at:  2017-11-21 12:47:44
+Log Reg ended at:  2017-11-21 13:33:32
+Log Reg took:  45.7955804864566
+C5.0 started at:  2017-11-21 13:33:32
+nnet started at:  2017-11-21 13:33:35
+nnet ended at:  2017-11-21 14:17:20
+nnet took:  43.7460761666298

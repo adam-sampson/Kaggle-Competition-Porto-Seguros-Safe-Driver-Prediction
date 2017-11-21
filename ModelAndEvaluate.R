@@ -397,7 +397,7 @@ set.seed(42)
         trainCtrl <- trainControl(method="none",
                                   #summaryFunction = twoClassSummary, 
                                   classProbs = TRUE,
-                                  #savePredictions = TRUE,
+                                  savePredictions = FALSE,
                                   sampling = "smote")
         
         featVarLogReg.mod <- train(targetChar~., data=train.dt[,-c(1,2)], 
@@ -411,6 +411,8 @@ set.seed(42)
         print(paste("Log Reg took: ",end_time-start_time))
         write(paste("Log Reg ended at: ",end_time),file = "log.txt",append = TRUE)
         write(paste("Log Reg took: ",end_time-start_time),file = "log.txt",append = TRUE)
+        gc(verbose = TRUE)
+        return(featVarLogReg.mod)
       }  
     #---
     # C5.0
@@ -428,7 +430,7 @@ set.seed(42)
                                      #savePredictions = TRUE,
                                      sampling = "smote")
         
-        grid <- expand.grid( .winnow = c(TRUE,FALSE), .trials=c(1,5,10,15,20), .model="tree" )
+        #grid <- expand.grid( .winnow = c(TRUE,FALSE), .trials=c(1,5,10,15,20), .model="tree" )
         
         featVarC50.mod <- train(targetChar~., data=train.dt[,-c(1,2)], 
                                tuneGrid=grid,method="C5.0",
@@ -539,13 +541,15 @@ set.seed(42)
       
         try(runNB())
         gc(verbose = TRUE)
-        try(runLogReg())
-        gc(verbose = TRUE)
-        try(runC50())
-        gc(verbose = TRUE)
+        
         try(runNnet())
         gc(verbose = TRUE)
+        
+        try(runC50())
+        gc(verbose = TRUE)
         try(runKNN())
+        gc(verbose = TRUE)
+        try(LogReg.mod <- runLogReg())
         gc(verbose = TRUE)
       
 
@@ -555,12 +559,22 @@ set.seed(42)
     train.dt <- readRDS(file = "train.dt.RDS")
     validate.dt <- readRDS(file = "validate.dt.RDS")
     
-    featVarNB.mod <- readRDS(file = "featVarNB.mod.RDS")
+    featVarNB.mod <- readRDS(file = "featVarNB.mod2.RDS")
     rm(featVarNB.mod)
-    featVarLR.mod <- readRDS(file = "featVarLogReg.mod.RDS")
+    gc(verbose = TRUE)
+    featVarLR.mod <- readRDS(file = "featVarLogReg.mod2.RDS")
+    rm(featVarLR.mod)
+    gc(verbose = TRUE)
+    featVarNN.mod <- readRDS(file = "featVarNN.mod2.RDS")
+    rm(featVarNN.mod)
+    gc(verbose = TRUE)
+    
+    rm(this.mod)
+    gc(verbose=TRUE)
     
     this.mod <- featVarNB.mod
     this.mod <- featVarLR.mod
+    this.mod <- featVarNN.mod
     
     summary(this.mod)
     this.mod$results
@@ -582,4 +596,5 @@ set.seed(42)
     actualOut <- data.table(id = featSelectTest.dt$id,target = actualPred$claim)
     # fwrite(actualOut,file="Samps_NaiveBayes_featSelct1.csv")
     fwrite(actualOut,file="Samps_LogReg_featSelct1.csv")
+    fwrite(actualOut,file="Samps_NN_featSelct2.csv")
     
