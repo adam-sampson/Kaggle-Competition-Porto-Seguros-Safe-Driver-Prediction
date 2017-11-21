@@ -1,1 +1,3 @@
 Begin Log.
+
+Naive Bayes took:  12.2548076616393
