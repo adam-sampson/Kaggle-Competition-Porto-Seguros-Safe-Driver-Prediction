@@ -23,7 +23,8 @@ packages <- c("data.table",
               "C50",
               "naivebayes",
               "doParallel",
-              "grid"
+              "grid",
+              "DMwR"
               )
 loadPackages(packages)
 rm(packages)
@@ -423,18 +424,19 @@ set.seed(42)
         set.seed(1000)
         # Set up resampling since we are imbalanced
         # c50trainCtrl <- trainControl(method="cv",
-        c50trainCtrl <- trainControl(method="none",
+        c50trainCtrl <- trainControl(#method="none",
                                      #<- trainControl(method="repeatedcv", repeats = 5,
                                      #summaryFunction = twoClassSummary, 
                                      classProbs = TRUE,
                                      #savePredictions = TRUE,
                                      sampling = "smote")
         
-        #grid <- expand.grid( .winnow = c(TRUE,FALSE), .trials=c(1,5,10,15,20), .model="tree" )
+        grid <- expand.grid( .winnow = c(TRUE,FALSE), .trials=c(1,5,10,15,20), .model="tree" )
         
         featVarC50.mod <- train(targetChar~., data=train.dt[,-c(1,2)], 
-                               tuneGrid=grid,method="C5.0",
-                               # metric = "ROC",
+                               tuneGrid=grid,
+                               method="C5.0",
+                               metric = "ROC",
                                trControl=c50trainCtrl)
         saveRDS(featVarC50.mod,file="featVarC50.mod.RDS")
         print("C5.0 Complete...")
@@ -576,7 +578,12 @@ set.seed(42)
     this.mod <- featVarLR.mod
     this.mod <- featVarNN.mod
     
+    rm(featVarLR.mod)
+    gc(verbose = TRUE)
+    .rs.restartR()
+    
     summary(this.mod)
+    write(print(summary(this.mod)),"LR_feat2_modelSummary.txt")
     this.mod$results
     varImp(this.mod)
     plot(varImp(this.mod))
@@ -593,8 +600,10 @@ set.seed(42)
   # Apply to actual test data...
   #---
     actualPred <- predict(this.mod, newdata = featSelectTest.dt, type = 'prob')
+    gc()
     actualOut <- data.table(id = featSelectTest.dt$id,target = actualPred$claim)
     # fwrite(actualOut,file="Samps_NaiveBayes_featSelct1.csv")
-    fwrite(actualOut,file="Samps_LogReg_featSelct1.csv")
+    fwrite(actualOut,file="Samps_LogReg_featSelct2.csv")
     fwrite(actualOut,file="Samps_NN_featSelct2.csv")
+    fwrite(actualOut,file="Samps_NB_featSelct2.csv")
     

@@ -9,3 +9,8 @@ C5.0 started at:  2017-11-21 13:33:32
 nnet started at:  2017-11-21 13:33:35
 nnet ended at:  2017-11-21 14:17:20
 nnet took:  43.7460761666298
+C5.0 started at:  2017-11-21 19:07:58
+C5.0 started at:  2017-11-21 19:09:55
+C5.0 started at:  2017-11-21 19:11:23
+C5.0 started at:  2017-11-21 19:12:05
+C5.0 started at:  2017-11-21 19:12:31
