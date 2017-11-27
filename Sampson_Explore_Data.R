@@ -106,6 +106,11 @@
     str(ps.train.dt)
     
     changeCols <- target.var
+    ps.train.dt[get(changeCols)==0,targetChar := "noClaim"]
+    ps.train.dt[get(changeCols)==1,targetChar := "claim"]
+    changeCols <- "targetChar"
+    ps.train.dt[,(changeCols) := lapply(.SD,as.factor), .SDcols = changeCols]
+    str(ps.train.dt$targetChar)
     
     # ps.train.dt[,(changeCols) := lapply(.SD,as.factor), .SDcols = changeCols]
     
@@ -322,7 +327,171 @@
   
   cleanupMissing(ps.train.dt,typeIndex.dt,0.05,-1)
   returnMissing(ps.train.dt,-1)
-  head(ps.train.dt[get("ps_reg_03")==-1])
-  head(ps.train.dt)
-  head(ps.train.dt[get("ps_car_14")==-1])
+  str(ps.train.dt)
+
+  cleanupMissing(ps.test.dt,typeIndex.dt,0.05,-1)
+  returnMissing(ps.test.dt,-1)
+  str(ps.test.dt)
   
+#---
+# What happens if we try a logistic regression on a sample of 50,000  
+#---
+  #---
+  # Create a subset for faster analysis
+  #---
+    set.seed(1000)
+    featSelectTrain.dt <- ps.train.dt %>% sample_n(20000)
+      sum(ps.train.dt$target)/length(ps.train.dt$target)
+      sum(featSelectTrain.dt$target)/length(featSelectTrain.dt$target)
+      confusionMatrix(featSelectTrain.dt$targetChar,featSelectTrain.dt$targetChar)
+    
+      
+    changeCols <- c(binary.var,categorical.var,target.var,c("ps_reg_03_miss", "ps_car_03_cat_miss", "ps_car_05_cat_miss", "ps_car_14_miss"))
+    featSelectTrain.dt[,(changeCols) := lapply(.SD,as.factor), .SDcols = changeCols]
+    str(featSelectTrain.dt)  
+    
+  #---
+  # Create a validation set
+  #---
+    Train <- createDataPartition(featSelectTrain.dt$targetChar,p=0.8,list=FALSE)
+    train.dt <- featSelectTrain.dt[Train,]    
+    validate.dt <- featSelectTrain.dt[-Train,]
+    rm(Train)
+    rm(featSelectTrain.dt)
+    #rm(ps.train.dt)
+    #rm(ps.test.dt)
+    
+    saveRDS(train.dt,"explore.train.dt.RDS")
+    saveRDS(validate.dt,"explore.validate.dt.RDS")
+    
+    gc(verbose = TRUE)
+    
+  #---
+  # set up the function
+  #---
+    runLogReg <- function() {
+      start_time <- Sys.time()
+      write(paste("Log Reg started at: ",start_time),file = "log.txt",append = TRUE)
+      set.seed(1000)
+      
+      # Set up resampling since we are imbalanced
+      # trainCtrl <- trainControl(method="repeatedcv", repeats = 5,
+      # trainCtrl <- trainControl(method="cv",
+      trainCtrl <- trainControl(method="none",
+                                #summaryFunction = twoClassSummary, 
+                                classProbs = TRUE,
+                                savePredictions = FALSE,
+                                sampling = "smote")
+      
+      featVarLogReg.mod <- train(targetChar~., data=train.dt[,-c(1,2)], 
+                                 method="glm", family="binomial", 
+                                 metric = "ROC",
+                                 trControl=trainCtrl)
+      
+      saveRDS(featVarLogReg.mod,file="exploreVarLogReg.mod.RDS")
+      print("Logistic Regression Complete...")
+      end_time <- Sys.time()
+      print(paste("Log Reg took: ",end_time-start_time))
+      write(paste("Log Reg ended at: ",end_time),file = "log.txt",append = TRUE)
+      write(paste("Log Reg took: ",end_time-start_time),file = "log.txt",append = TRUE)
+      gc(verbose = TRUE)
+      return(featVarLogReg.mod)
+    }  
+    
+  #---
+  # Run the regression
+  #---
+    try(LogReg.mod <- runLogReg())
+    gc(verbose = TRUE)
+  
+  #---
+  # Check the results
+  #---
+    # train.dt <- readRDS(file = "train.dt.RDS")
+    # validate.dt <- readRDS(file = "validate.dt.RDS")
+    
+    # featVarLR.mod <- readRDS(file = "exploreVarLogReg.mod2.RDS")
+    # gc(verbose = TRUE)
+    
+    rm(this.mod)
+    gc(verbose=TRUE)
+
+    this.mod <- LogReg.mod
+    mod.summary <- summary(this.mod)
+    capture.output(mod.summary,file = "LR_explore_modelSummary.txt")
+    
+    this.mod$results
+    varImp(this.mod)
+    # plot(varImp(this.mod))
+    
+    predictOut <- predict(this.mod, newdata = validate.dt)    
+    confusionMatrix(predictOut,validate.dt$targetChar)
+    
+    predictProb <- predict(this.mod, newdata = validate.dt, type = 'prob')
+    this.ROC <- roc(predictor=predictProb$claim, response = validate.dt$targetChar)
+    plot(this.ROC,main='ROC')
+    this.ROC$auc
+    
+    #---
+    # Apply to actual test data...
+    #---
+    actualPred <- predict(this.mod, newdata = featSelectTest.dt, type = 'prob')
+    gc()
+    actualOut <- data.table(id = featSelectTest.dt$id,target = actualPred$claim)
+    fwrite(actualOut,file="Samps_LogReg_exploreSelct2.csv") 
+   
+  #---
+  # Try StepAIC
+  #---
+    
+     
+  #---
+  # use rfe to attempt variable selection: 
+    # https://machinelearningmastery.com/feature-selection-with-the-caret-r-package/
+    # https://topepo.github.io/caret/recursive-feature-elimination.html
+  #---
+    # Note: cannot handle predictors with more than 53 categories
+    str(train.dt)
+    
+    control <- rfeControl(functions=rfFuncs, method="cv", number=10)
+    # run the RFE algorithm
+    results <- rfe(x=train.dt[,-c("id","target","ps_car_11_cat","targetChar")], y=train.dt$targetChar, 
+                   sizes=c(1:10,15,20,25), 
+                   rfeControl=control,
+                   metric = "Accuracy")
+    # summarize the results
+    print(results)
+    # list the chosen features
+    predictors(results)
+    # plot the results
+    plot(results, type=c("g", "o"))
+    print(results, type=c("g", "o"), metric = "Rsquared")
+    
+    results$fit
+    head(results$resample)
+    results$rank
+    results$selectVar
+    results$variables
+    results$optVariables
+    summary(results)
+    
+  #---
+  # Try a genetic algorithm for feature selection
+  # https://www.r-bloggers.com/feature-selection-with-carets-genetic-algorithm-option/
+  #---
+    ga_ctrl <- gafsControl(functions = rfGA,
+                           method = "cv",
+                           genParallel = TRUE,
+                           allowParallel = TRUE)
+    
+    lev <- c("PS","WS")
+    
+    rf_ga <- gafs(x=train.dt[,-c("id","target","ps_car_11_cat","targetChar")], y=train.dt$targetChar,
+                  iters = 100,
+                  popSize = 20,
+                  #levels = lev,
+                  gafsControl = ga_ctrl)
+    
+    rf_ga
+    plot(rf_ga)
+    

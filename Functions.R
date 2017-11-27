@@ -402,3 +402,95 @@ performFeatSelection2 <- function(in.dt) {
   # ps.test.dt[,(changeCols) := lapply(.SD,as.factor), .SDcols = changeCols]
   # str(in.dt)
 }
+
+##########
+performFeatSelection3 <- function(in.dt) {
+  ####
+  # Feature Engineering!
+  ####
+    
+    #---
+    # Remove highly correlated variables
+    #---
+    # ps_car_13 correlates to ps_car_15
+    # ps_car_04_cat correlates to ps_car_13 and ps_car_12
+    # ps_reg_03 correlates to ps_reg_02 and ps_reg_01
+    # ps_ind_14 correlates to ps_ind_11_bin and ps_ind_12_bin
+    # ps_ind_16_bin negatively correlates to ps_ind_17_bin and ps_ind_18_bin
+    #---
+    in.dt <- in.dt %>% select(-ps_car_13,
+                              -ps_car_04_cat,
+                              -ps_reg_02,
+                              -ps_reg_01,
+                              -ps_ind_11_bin,
+                              -ps_ind_12_bin,
+                              -ps_ind_16_bin,
+                              -ps_ind_18_bin)
+  
+  #### 
+  # Use the results of the logistic regression to eliminate variables with high p-values
+  ####
+  
+    #---
+    # p-values over 0.5
+    #---
+    in.dt <- in.dt %>% select(-ps_ind_04_cat,
+                              -ps_ind_06_bin,
+                              -ps_ind_10_bin,
+                              -ps_ind_13_bin,
+                              -ps_car_08_cat,
+                              -ps_car_10_cat,
+                              -ps_car_14,
+                              -ps_car_15,
+                              -ps_calc_02,
+                              -ps_calc_03,
+                              -ps_calc_04,
+                              -ps_calc_08,
+                              -ps_calc_11,
+                              -ps_calc_12,
+                              -ps_calc_14)
+  
+    #---
+    # p-values over 0.25
+    #---
+    in.dt <- in.dt %>% select(-ps_car_05_cat,
+                              -ps_car_12,
+                              -ps_calc_13)
+    
+    #---
+    # p-values over 0.05
+    #---
+    in.dt <- in.dt %>% select(-ps_ind_01,
+                              -ps_calc_01,
+                              -ps_calc_05,
+                              -ps_calc_07,
+                              -ps_calc_09,
+                              -ps_calc_10)
+  
+  ####
+  # convert appropriate fields to factors
+  ####
+  
+  # changeCols <- names(in.dt)
+  # changeCols <- changeCols[(changeCols != "id")&(changeCols != "ps_car_13")&(changeCols != "ps_car_14")]
+  # in.dt[,(changeCols) := lapply(.SD,as.factor), .SDcols = changeCols]
+  # str(in.dt)
+}
+
+
+##########
+performFeatSelection4 <- function(in.dt) {
+  #use feat selection 3
+  in.dt <- performFeatSelection3(in.dt)
+  
+  # additionally remove
+  in.dt <- in.dt %>% select(-ps_ind_03,
+                            -ps_ind_09_bin,
+                            -ps_ind_14,
+                            -ps_reg_03,
+                            -ps_car_03_cat,
+                            -ps_car_07_cat,
+                            -ps_calc_15_bin,
+                            -ps_calc_17_bin,
+                            -ps_car_14_miss)
+}

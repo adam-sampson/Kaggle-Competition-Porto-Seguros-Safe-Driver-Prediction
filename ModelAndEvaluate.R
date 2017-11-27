@@ -34,231 +34,7 @@ source("Functions.R")
 set.seed(42)
 
 #---
-# Import Data from files as data.table
-#---
-  ps.train.dt <- fread("train.csv")
-  ps.test.dt <- fread("test.csv")
-  gc(verbose = TRUE)
-  
-#---
-# For testing purposes only, create smaller set to run faster. **REMOVE**
-#--
-  rm(ps.train2.dt)
-  rm(ps.test2.dt)
-  gc(verbose = TRUE)
-  ps.train2.dt <- copy(rbind(sample_n(ps.train.dt[target==0],5000),
-                       sample_n(ps.train.dt[target==1],500)))
-  ps.test2.dt <- copy(sample_n(ps.test.dt,10000))
-  rm(ps.train.dt)
-  rm(ps.test.dt)
-  gc()
-  ps.train.dt <- copy(ps.train2.dt)
-  ps.test.dt <- copy(ps.test2.dt)
-  rm(ps.train2.dt)
-  rm(ps.test2.dt)
-  gc()
-
-#---
-# Convert columns to the correct classes
-#---
-  target.var <- c("target")
-  categorical.var <- names(ps.train.dt) %>% str_subset(".+_cat")
-  binary.var <- names(ps.train.dt) %>% str_subset(".+_bin")
-  other.var <- ps.train.dt %>% select(-id,-target, -one_of(categorical.var), -one_of(binary.var)) %>% names()
-  ordinal.var <- ps.train.dt %>% select(other.var) %>% select(1,2,3,4,5,6,8,13:26) %>% names()
-  interval.var <- ps.train.dt %>% select(-id,-one_of(target.var),-one_of(categorical.var),
-                                         -one_of(binary.var),-one_of(ordinal.var)) %>% names()
-  rm(other.var)
-  
-  # Change target to factor
-  changeCols <- target.var
-  ps.train.dt[get(changeCols)==0,targetChar := "noClaim"]
-  ps.train.dt[get(changeCols)==1,targetChar := "claim"]
-  changeCols <- "targetChar"
-  ps.train.dt[,(changeCols) := lapply(.SD,as.factor), .SDcols = changeCols]
-    str(ps.train.dt$targetChar)
-  ps.train.dt[,(changeCols) := lapply(.SD,relevel,"noClaim"), .SDcols = changeCols]
-    str(ps.train.dt$targetChar)
-  
-  changeCols <- c(categorical.var)
-  ps.train.dt[,(changeCols) := lapply(.SD,as.factor), .SDcols = changeCols]
-  ps.test.dt[,(changeCols) := lapply(.SD,as.factor), .SDcols = changeCols]
-  
-  str(ps.train.dt)  
-#---
-# Scale the variables
-#---
-
-#---
-# Create a validation set
-#---
-  Train <- createDataPartition(ps.train.dt$targetChar,p=0.8,list=FALSE)
-  train.dt <- ps.train.dt[Train,]    
-  validate.dt <- ps.train.dt[-Train,]
-  rm(Train)
-  str(train.dt)
-
-#---
-# Try modelling using all variables
-#---
-       
-  #---
-  # Build a logistic regression model with all of the variables to get a baseline
-  #---
-    set.seed(1000)
-    # Set up resampling since we are imbalanced
-    trainCtrl <- trainControl(method="cv", 
-                              #summaryFunction = twoClassSummary, 
-                              classProbs = TRUE,
-                              savePredictions = TRUE,
-                              sampling = "smote")
-    
-    # trainCtrl <- trainControl(method="repeatedcv", number=10, repeats=5 
-    #                           #summaryFunction = twoClassSummary, 
-    #                           #classProbs = TRUE,
-    #                           savePredictions = TRUE)
-    
-    # general logistic regression using smote sampling (instead of upsampling)
-    allVarLogReg.mod <- train(targetChar~., data=train.dt[,-c(1,2)], 
-                              method="glm", family="binomial", 
-                              metric = "ROC",
-                              trControl=trainCtrl)
-    saveRDS(allVarLogReg.mod,file="allVarLogReg.mod.RDS")
-      # attributes(allVarLogReg.mod)
-      allVarLogReg.mod$finalModel
-      allVarLogReg.mod$results
-      varImp(allVarLogReg.mod)
-      plot(varImp(allVarLogReg.mod),main="LogReg - Variable Importance")
-      
-      # allVarLogReg.mod$pred
-      
-    # now use model to predict on validation set
-    predictLogReg <- predict(allVarLogReg.mod, newdata = validate.dt)
-      confusionMatrix(predictLogReg,validate.dt$targetChar)  
-    predictLogReg <- predict(allVarLogReg.mod, newdata = validate.dt,type = 'prob')
-      logReg.ROC <- roc(predictor=predictLogReg$claim,
-                        response = validate.dt$targetChar)
-      plot(logReg.ROC,main="LogReg ROC")
-      logReg.ROC$auc
-      # logReg.ROC$thresholds
-      
-    # Using ROCR package  
-    #predictLogReg <- predict(allVarLogReg.mod, newdata = validate.dt)
-      #confusionMatrix(predictLogReg,validate.dt$target)
-      pred <- prediction(predictLogReg$noClaim,validate.dt$targetChar)
-      perf <- performance(pred,measure = "tpr", x.measure = "fpr")
-      plot(perf)
-      abline(a=0,b=1)    
-      
-      cost.perf <- performance(pred,"cost")
-      plot(cost.perf)
-      
-      acc.perf <- performance(pred, measure = "acc")
-      plot(acc.perf)
-      
-      auc.perf <- performance(pred, measure = "auc")
-      auc.perf@y.values
-      
-      pred.cut <- opt.cut(perf = perf, pred = pred)
-      print(pred.cut)    
-      cutoff <- pred.cut[3]
-      # cutoff <- 0.08
-      
-      mergeValPred <- data.table(true = validate.dt$targetChar, probPred = predictLogReg$claim)
-      mergeValPred[probPred >= cutoff,pred := "claim"]
-      mergeValPred[probPred < cutoff,pred := "noClaim"]
-      confusionMatrix(mergeValPred$true,mergeValPred$pred)
-  
-  #---
-  # Build a C5.0 tree model with all of the variables to get a baseline
-  #--- 
-    set.seed(1000)
-    # Set up resampling since we are imbalanced
-    c50trainCtrl <- trainControl(method="cv", 
-                              # summaryFunction = twoClassSummary, 
-                               classProbs = TRUE,
-                               savePredictions = TRUE,
-                               sampling = "smote")
-    
-    grid <- expand.grid( .winnow = c(TRUE,FALSE), .trials=c(1,5,10,15,20), .model="tree" )
-    
-    allVarC50.mod <- train(targetChar~., data=train.dt[,-c(1,2)], 
-                              tuneGrid=grid,method="C5.0",
-                              # metric = "ROC",
-                              trControl=c50trainCtrl)
-    saveRDS(allVarC50.mod,file="allVarC50.mod.RDS")
-    allVarC50.mod$finalModel
-    allVarC50.mod$results
-    summary(allVarC50.mod)
-    
-    predictC50 <- predict(allVarC50.mod, newdata = validate.dt)
-      confusionMatrix(predictC50,validate.dt$targetChar)
-    predictC50 <- predict(allVarC50.mod, newdata = validate.dt, type = 'prob')
-      C50.ROC <- roc(predictor=predictC50$claim,
-                        response = validate.dt$targetChar)
-      plot(C50.ROC,main="C50 tree ROC")
-      C50.ROC$auc
-      
-  #---
-  # Build a Naive Bayes model with all of the variables to get a baseline
-  #---
-    set.seed(1000)
-    
-    NBtrainCtrl <- trainControl(method="cv", 
-                                 # summaryFunction = twoClassSummary, 
-                                 classProbs = TRUE,
-                                 savePredictions = TRUE,
-                                 sampling = "smote")
-  
-    allVarNB <- train(targetChar~., data=train.dt[,-c(1,2)],
-                            method = 'naive_bayes',
-                            trControl=NBtrainCtrl)
-    saveRDS(allVarNB,file="allVarNB.mod.RDS")
-    summary(allVarNB)
-    allVarNB$results
-    varImp(allVarNB)
-    plot(varImp(allVarNB))
-    
-    predictNB <- predict(allVarNB, newdata = validate.dt)
-      confusionMatrix(predictNB,validate.dt$targetChar)
-    predictNB <- predict(allVarNB, newdata = validate.dt, type='prob')
-      NB.ROC <- roc(predictor=predictNB$claim,
-                     response = validate.dt$targetChar)
-      plot(NB.ROC,main='Naive Bayes ROC')
-      NB.ROC$auc
-              
-  #---
-  # Build a neural network using mxnet with all of the variables to get a baseline
-  #---
-      set.seed(1000)
-      
-      NNtrainCtrl <- trainControl(method="cv", 
-                                  # summaryFunction = twoClassSummary, 
-                                  classProbs = TRUE,
-                                  savePredictions = TRUE,
-                                  sampling = "smote")
-      
-      # NNgrid <- expand.grid(size=c(10),decay=c(0.1))
-      NNgrid <- expand.grid(size=c(10))
-      
-      allVarNN <- train(targetChar~., data=train.dt[,-c(1,2)],
-                        method = 'nnet',
-                        # preProcess = c('scale'),
-                        #tuneGrid = NNgrid,
-                        trControl=NNtrainCtrl)
-      saveRDS(allVarNN,file="allVarNN.mod.RDS")
-      summary(allVarNN)
-      allVarNN$results
-      
-      predictNN <- predict(allVarNN, newdata = validate.dt)
-        confusionMatrix(predictNN,validate.dt$targetChar)
-      predictNN <- predict(allVarNN, newdata = validate.dt, type='prob')
-        NN.ROC <- roc(predictor=predictNN$claim,
-                    response = validate.dt$targetChar)
-      plot(NN.ROC,main='Neural Network ROC')
-      NN.ROC$auc
-#---
-# Re-try modelling after Feature engineering
+# Try modelling after Feature engineering
 #---
   
   #---
@@ -298,7 +74,8 @@ set.seed(42)
     # rm(ps.train2.dt)
     # rm(ps.test2.dt)
     # gc()
-  
+    
+    
   #---
   # Convert columns to the correct classes
   #---
@@ -355,16 +132,48 @@ set.seed(42)
   #---
   # Feature Selection
   #---
-    featSelectTrain.dt <- performFeatSelection2(ps.train.dt)
-    str(featSelectTrain.dt)
-    summary(featSelectTrain.dt)
-    featSelectTest.dt  <- performFeatSelection2(ps.test.dt)
-    str(featSelectTest.dt)
-  
-  #---
-  # Scale the variables
-  #---
+    # select everything for comparison...
+    featSelectTrain.dt <- ps.train.dt
     
+    #feature selection option 2
+     featSelectTrain.dt <- performFeatSelection4(ps.train.dt)
+    # str(featSelectTrain.dt)
+    # summary(featSelectTrain.dt)
+     featSelectTest.dt  <- performFeatSelection4(ps.test.dt)
+    # str(featSelectTest.dt)
+    
+    #feature selection option 3
+    # featSelectTrain.dt <- performFeatSelection3(ps.train.dt)
+    # featSelectTest.dt  <- performFeatSelection3(ps.test.dt)
+    
+    #feature selection option 4
+    # featSelectTrain.dt <- performFeatSelection4(ps.train.dt)
+    # featSelectTest.dt  <- performFeatSelection4(ps.test.dt)
+    
+    # What if we remove the huge ps_car_11?
+    # featSelectTest.dt <- featSelectTest.dt %>% select(-ps_car_11_cat)
+    # featSelectTrain.dt <- featSelectTrain.dt %>% select(-ps_car_11_cat)
+    
+    # Convert to factors
+    categorical.var <- names(featSelectTrain.dt) %>% str_subset(".+_cat")
+    binary.var <- names(featSelectTrain.dt) %>% str_subset(".+_bin")
+    miss.var <- names(featSelectTrain.dt) %>% str_subset(".+_miss")
+    changeCols <- c(binary.var,categorical.var,target.var,miss.var)
+    featSelectTrain.dt[,(changeCols) := lapply(.SD,as.factor), .SDcols = changeCols]
+    str(featSelectTrain.dt) 
+    
+    changeCols <- str_subset(changeCols,"^(?!target).*$")
+    featSelectTest.dt[,(changeCols) := lapply(.SD,as.factor), .SDcols = changeCols]
+    str(featSelectTest.dt) 
+  #---
+  # sample for smaller set...for testing purposes only
+  #---
+    set.seed(1000)
+    featSelectTrain.dt <- featSelectTrain.dt %>% sample_n(20000)
+    confusionMatrix(featSelectTrain.dt$targetChar,featSelectTrain.dt$targetChar)
+
+    
+     
     
   #---
   # Create a validation set
@@ -374,11 +183,11 @@ set.seed(42)
     validate.dt <- featSelectTrain.dt[-Train,]
     rm(Train)
     rm(featSelectTrain.dt)
-    rm(ps.train.dt)
-    rm(ps.test.dt)
+    # rm(ps.train.dt)
+    # rm(ps.test.dt)
     
-    saveRDS(train.dt,"train.dt.RDS")
-    saveRDS(validate.dt,"validate.dt.RDS")
+    # saveRDS(train.dt,"train.dt.RDS")
+    # saveRDS(validate.dt,"validate.dt.RDS")
     
     gc(verbose = TRUE)
   #---
@@ -444,6 +253,7 @@ set.seed(42)
         print(paste("C5.0 took: ",end_time-start_time))
         write(paste("C5.0 ended at: ",end_time),file = "log.txt",append = TRUE)
         write(paste("C5.0 took: ",end_time-start_time),file = "log.txt",append = TRUE)
+        return(featVarC50.mod)
       }  
     #---
     # Naive Bayes
@@ -454,7 +264,7 @@ set.seed(42)
         set.seed(1000)
         
         # NBtrainCtrl <- trainControl(method="cv",
-        NBtrainCtrl <- trainControl(method="none",
+        NBtrainCtrl <- trainControl(#method="none",
                                     #<- trainControl(method="repeatedcv", repeats = 5,
                                     #summaryFunction = twoClassSummary, 
                                     classProbs = TRUE,
@@ -470,6 +280,7 @@ set.seed(42)
         print(paste("Naive Bayes took: ",end_time-start_time))
         write(paste("Naive Bayes ended at: ",end_time),file = "log.txt",append = TRUE)
         write(paste("Naive Bayes took: ",end_time-start_time),file = "log.txt",append = TRUE)
+        return(featVarNB)
       }  
     #---
     # nnet
@@ -501,6 +312,7 @@ set.seed(42)
         print(paste("NNet took: ",end_time-start_time))
         write(paste("nnet ended at: ",end_time),file = "log.txt",append = TRUE)
         write(paste("nnet took: ",end_time-start_time),file = "log.txt",append = TRUE)
+        return(featVarNN)
       }  
     
     #---
@@ -511,7 +323,7 @@ set.seed(42)
         set.seed(1000)
         
         # KNNtrainCtrl <- trainControl(method="cv",
-        KNNtrainCtrl <- trainControl(method="none",
+        KNNtrainCtrl <- trainControl(#method="none",
                                     #<- trainControl(method="repeatedcv", repeats = 5,
                                     #summaryFunction = twoClassSummary, 
                                     classProbs = TRUE,
@@ -531,6 +343,7 @@ set.seed(42)
         end_time <- Sys.time()
         print(paste("KNN took: ",end_time-start_time))
         write(paste("KNN took: ",end_time-start_time),file = "log.txt",append = TRUE)
+        return(featVarKNN)
       } 
     #---
     # Try to run all the models, using try() in case something fails...
@@ -541,16 +354,18 @@ set.seed(42)
       #gc()
       print(paste("Beginning at",Sys.time()))
       
-        try(runNB())
+        try(NB.mod <- runNB())
         gc(verbose = TRUE)
         
-        try(runNnet())
+        try(NN.mod <- runNnet())
         gc(verbose = TRUE)
         
-        try(runC50())
+        try(c50.mod <- runC50())
         gc(verbose = TRUE)
+        
         try(runKNN())
         gc(verbose = TRUE)
+        
         try(LogReg.mod <- runLogReg())
         gc(verbose = TRUE)
       
@@ -558,32 +373,44 @@ set.seed(42)
   #---
   # Check the results
   #---
-    train.dt <- readRDS(file = "train.dt.RDS")
-    validate.dt <- readRDS(file = "validate.dt.RDS")
+    # train.dt <- readRDS(file = "train.dt.RDS")
+    # validate.dt <- readRDS(file = "validate.dt.RDS")
     
-    featVarNB.mod <- readRDS(file = "featVarNB.mod2.RDS")
+    NB.mod <- readRDS(file = "featVarNB.mod.RDS")
     rm(featVarNB.mod)
     gc(verbose = TRUE)
-    featVarLR.mod <- readRDS(file = "featVarLogReg.mod2.RDS")
-    rm(featVarLR.mod)
-    gc(verbose = TRUE)
-    featVarNN.mod <- readRDS(file = "featVarNN.mod2.RDS")
+
+    # featVarLR.mod <- readRDS(file = "featVarLogReg.mod2.RDS")
+    # rm(featVarLR.mod)
+    # gc(verbose = TRUE)
+    # 
+    NN.mod <- readRDS(file = "featVarNN.mod.RDS")
     rm(featVarNN.mod)
     gc(verbose = TRUE)
+
+    c50.mod <- readRDS(file = "featVarC50.mod.RDS")
+        
+    LogReg.mod <- readRDS(file = "featVarLogReg.mod2.RDS")
     
     rm(this.mod)
     gc(verbose=TRUE)
     
-    this.mod <- featVarNB.mod
-    this.mod <- featVarLR.mod
-    this.mod <- featVarNN.mod
+    # this.mod <- featVarNB.mod
+    # this.mod <- featVarLR.mod
+    # this.mod <- featVarNN.mod
     
-    rm(featVarLR.mod)
+    this.mod <- LogReg.mod
+    this.mod <- NB.mod
+    this.mod <- NN.mod
+    this.mod <- c50.mod
+    
+    # rm(featVarLR.mod)
     gc(verbose = TRUE)
-    .rs.restartR()
+    # .rs.restartR()
     
     summary(this.mod)
-    write(print(summary(this.mod)),"LR_feat2_modelSummary.txt")
+    summary.mod <- summary(this.mod)
+    # capture.output(summary.mod,file = "LR_feat4full_modelSummary.txt")
     this.mod$results
     varImp(this.mod)
     plot(varImp(this.mod))
@@ -603,7 +430,10 @@ set.seed(42)
     gc()
     actualOut <- data.table(id = featSelectTest.dt$id,target = actualPred$claim)
     # fwrite(actualOut,file="Samps_NaiveBayes_featSelct1.csv")
-    fwrite(actualOut,file="Samps_LogReg_featSelct2.csv")
-    fwrite(actualOut,file="Samps_NN_featSelct2.csv")
-    fwrite(actualOut,file="Samps_NB_featSelct2.csv")
+    fwrite(actualOut,file="Samps_LogReg_featSelct4.csv")
+    # fwrite(actualOut,file="Samps_NN_featSelct2.csv")
+    # fwrite(actualOut,file="Samps_NB_featSelct2.csv")
+    rm(actualPred)
+    rm(actualOut)
+    gc()
     

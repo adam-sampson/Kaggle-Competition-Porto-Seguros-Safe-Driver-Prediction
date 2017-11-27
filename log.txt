@@ -14,3 +14,59 @@ C5.0 started at:  2017-11-21 19:09:55
 C5.0 started at:  2017-11-21 19:11:23
 C5.0 started at:  2017-11-21 19:12:05
 C5.0 started at:  2017-11-21 19:12:31
+Log Reg started at:  2017-11-22 23:20:14
+Log Reg ended at:  2017-11-22 23:20:21
+Log Reg took:  6.13894414901733
+Log Reg started at:  2017-11-22 23:30:18
+Log Reg ended at:  2017-11-22 23:30:31
+Log Reg took:  12.8679270744324
+Log Reg started at:  2017-11-26 11:36:20
+Log Reg ended at:  2017-11-26 11:36:29
+Log Reg took:  8.74393796920776
+Log Reg started at:  2017-11-26 11:46:29
+Log Reg ended at:  2017-11-26 11:46:34
+Log Reg took:  4.3811240196228
+Log Reg started at:  2017-11-26 11:54:45
+Log Reg ended at:  2017-11-26 11:54:49
+Log Reg took:  3.64482402801514
+Naive Bayes started at:  2017-11-26 12:01:22
+nnet started at:  2017-11-26 12:01:22
+nnet ended at:  2017-11-26 12:01:25
+nnet took:  2.50049090385437
+C5.0 started at:  2017-11-26 12:01:25
+C5.0 ended at:  2017-11-26 12:08:14
+C5.0 took:  6.81174679994583
+Naive Bayes started at:  2017-11-26 12:08:14
+Naive Bayes started at:  2017-11-26 12:11:22
+Naive Bayes ended at:  2017-11-26 12:12:03
+Naive Bayes took:  40.8366389274597
+nnet started at:  2017-11-26 12:12:12
+nnet ended at:  2017-11-26 12:12:14
+nnet took:  2.44701099395752
+C5.0 started at:  2017-11-26 12:12:21
+C5.0 ended at:  2017-11-26 12:19:08
+C5.0 took:  6.7827624797821
+Log Reg started at:  2017-11-26 14:56:26
+Log Reg ended at:  2017-11-26 14:56:31
+Log Reg took:  5.43766689300537
+Log Reg started at:  2017-11-26 14:58:00
+Log Reg ended at:  2017-11-26 14:58:10
+Log Reg took:  10.3698148727417
+Log Reg started at:  2017-11-26 15:00:17
+Log Reg ended at:  2017-11-26 15:46:19
+Log Reg took:  46.0329590320587
+Log Reg started at:  2017-11-26 20:20:23
+Log Reg ended at:  2017-11-26 20:52:19
+Log Reg took:  31.9376480658849
+Log Reg started at:  2017-11-26 22:41:22
+Log Reg ended at:  2017-11-26 22:41:35
+Log Reg took:  12.9095809459686
+Naive Bayes started at:  2017-11-26 22:42:17
+Naive Bayes ended at:  2017-11-26 22:45:00
+Naive Bayes took:  2.71979858080546
+nnet started at:  2017-11-26 22:45:01
+nnet ended at:  2017-11-26 22:45:06
+nnet took:  5.77187895774841
+C5.0 started at:  2017-11-26 22:45:07
+C5.0 ended at:  2017-11-26 23:12:43
+C5.0 took:  27.6064795136452
